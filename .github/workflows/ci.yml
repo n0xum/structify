@@ -27,6 +27,9 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    # TODO: re-enable once golangci-lint is built with Go 1.26
+    # https://github.com/golangci/golangci-lint/releases
+    if: false
     steps:
       - uses: actions/checkout@v4
 
