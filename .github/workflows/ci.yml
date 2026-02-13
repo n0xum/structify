@@ -123,11 +123,11 @@ jobs:
         run: |
           go test -coverprofile=coverage.out -covermode=atomic ./...
 
-      - name: SonarQube Scan
+      - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v3
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_HOST_URL: https://sonarcloud.io
 
   release:
     name: Release
