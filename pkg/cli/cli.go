@@ -57,6 +57,7 @@ func (c *Command) Validate() error {
 		fmt.Fprintln(os.Stderr, "  --from-json    Convert JSON to Go struct")
 		fmt.Fprintln(os.Stderr, "")
 		fmt.Fprintln(os.Stderr, "Parsing and validating structs only (no output generated)")
+		return fmt.Errorf("no output flag specified")
 	}
 	return nil
 }
