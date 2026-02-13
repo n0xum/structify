@@ -1,6 +1,6 @@
 package validator
 
-import "github.com/ak/structify/internal/domain/entity"
+import "github.com/n0xum/structify/internal/domain/entity"
 
 type ValidatedEntity struct {
 	Entity         *entity.Entity

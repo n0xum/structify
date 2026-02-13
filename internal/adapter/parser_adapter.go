@@ -3,8 +3,8 @@ package adapter
 import (
 	"strings"
 
-	"github.com/ak/structify/internal/domain/entity"
-	"github.com/ak/structify/internal/parser"
+	"github.com/n0xum/structify/internal/domain/entity"
+	"github.com/n0xum/structify/internal/parser"
 )
 
 type ParserAdapter struct{}

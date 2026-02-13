@@ -3,7 +3,7 @@ package query
 import (
 	"context"
 
-	"github.com/ak/structify/internal/domain/entity"
+	"github.com/n0xum/structify/internal/domain/entity"
 )
 
 type Handler struct {

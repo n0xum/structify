@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ak/structify/internal/domain/entity"
+	"github.com/n0xum/structify/internal/domain/entity"
 )
 
 func TestSchemaGeneratorGenerate(t *testing.T) {

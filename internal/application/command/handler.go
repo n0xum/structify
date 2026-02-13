@@ -3,8 +3,8 @@ package command
 import (
 	"context"
 
-	"github.com/ak/structify/internal/domain/entity"
-	"github.com/ak/structify/internal/domain/validator"
+	"github.com/n0xum/structify/internal/domain/entity"
+	"github.com/n0xum/structify/internal/domain/validator"
 )
 
 type Handler struct {

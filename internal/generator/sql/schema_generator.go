@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ak/structify/internal/domain/entity"
-	"github.com/ak/structify/internal/mapper"
+	"github.com/n0xum/structify/internal/domain/entity"
+	"github.com/n0xum/structify/internal/mapper"
 	"github.com/lib/pq"
 )
 

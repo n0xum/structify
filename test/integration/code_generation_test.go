@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ak/structify/internal/application/command"
+	"github.com/n0xum/structify/internal/application/command"
 )
 
 func TestCodeGenerationContainsCRUD(t *testing.T) {

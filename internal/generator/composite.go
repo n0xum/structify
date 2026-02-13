@@ -3,9 +3,9 @@ package generator
 import (
 	"context"
 
-	"github.com/ak/structify/internal/domain/entity"
-	"github.com/ak/structify/internal/generator/code"
-	"github.com/ak/structify/internal/generator/sql"
+	"github.com/n0xum/structify/internal/domain/entity"
+	"github.com/n0xum/structify/internal/generator/code"
+	"github.com/n0xum/structify/internal/generator/sql"
 )
 
 type CompositeGenerator struct {

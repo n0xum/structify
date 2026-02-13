@@ -1,4 +1,4 @@
-module github.com/ak/structify
+module github.com/n0xum/structify
 
 go 1.21.0
 

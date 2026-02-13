@@ -3,7 +3,7 @@ package adapter
 import (
 	"testing"
 
-	"github.com/ak/structify/internal/parser"
+	"github.com/n0xum/structify/internal/parser"
 )
 
 func TestParserAdapterToDomain(t *testing.T) {

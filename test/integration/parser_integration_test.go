@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ak/structify/internal/application"
-	"github.com/ak/structify/internal/application/query"
+	"github.com/n0xum/structify/internal/application"
+	"github.com/n0xum/structify/internal/application/query"
 )
 
 func TestFullParseUserFixture(t *testing.T) {

@@ -3,9 +3,9 @@ package application
 import (
 	"context"
 
-	"github.com/ak/structify/internal/adapter"
-	"github.com/ak/structify/internal/domain/entity"
-	"github.com/ak/structify/internal/parser"
+	"github.com/n0xum/structify/internal/adapter"
+	"github.com/n0xum/structify/internal/domain/entity"
+	"github.com/n0xum/structify/internal/parser"
 )
 
 type ParserWrapper struct {

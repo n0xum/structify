@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ak/structify/internal/application"
-	"github.com/ak/structify/internal/application/command"
-	"github.com/ak/structify/internal/application/query"
-	"github.com/ak/structify/internal/generator"
+	"github.com/n0xum/structify/internal/application"
+	"github.com/n0xum/structify/internal/application/command"
+	"github.com/n0xum/structify/internal/application/query"
+	"github.com/n0xum/structify/internal/generator"
 )
 
 var fixturesDir = filepath.Join("..", "fixtures")
