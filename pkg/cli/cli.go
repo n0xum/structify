@@ -159,7 +159,7 @@ func (a *App) convertJSON() error {
 
 func (a *App) writeOutput(output string) error {
 	if a.cmd.OutputFile != "" {
-		return os.WriteFile(a.cmd.OutputFile, []byte(output), 0644)
+		return os.WriteFile(a.cmd.OutputFile, []byte(output), 0600)
 	}
 	_, err := fmt.Fprint(os.Stdout, output)
 	return err
