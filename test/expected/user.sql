@@ -1,0 +1,15 @@
+CREATE TABLE users (
+    id BIGINT PRIMARY KEY NOT NULL,
+    username VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255),
+    active BOOLEAN NOT NULL,
+    created BIGINT NOT NULL
+);
+
+CREATE TABLE products (
+    id BIGINT PRIMARY KEY NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    price DOUBLE PRECISION NOT NULL,
+    description VARCHAR(255),
+    in_stock BOOLEAN NOT NULL
+);
