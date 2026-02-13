@@ -25,3 +25,7 @@ issues:
     - path: _test\.go
       linters:
         - errcheck
+    # golangci-lint is not yet built with Go 1.26 — suppress version mismatch typecheck errors
+    - linters:
+        - typecheck
+      text: "requires newer Go version go1.26"
