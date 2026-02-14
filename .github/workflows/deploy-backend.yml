@@ -1,0 +1,50 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "cmd/server/**"
+      - "internal/**"
+      - "go.mod"
+      - "go.sum"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build & Deploy to Hetzner
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.0"
+          cache: true
+
+      - name: Cross-compile for Linux amd64
+        run: |
+          GOOS=linux GOARCH=amd64 go build \
+            -ldflags="-s -w -X main.version=$(git describe --tags --always)" \
+            -o structify-server \
+            ./cmd/server/
+
+      - name: Deploy binary to Hetzner VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          source: structify-server
+          target: /opt/structify/
+
+      - name: Restart systemd service
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            chmod +x /opt/structify/structify-server
+            sudo systemctl restart structify
