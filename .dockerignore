@@ -1,0 +1,13 @@
+.git
+.github
+.gitignore
+.dockerignore
+.golangci.yml
+*.md
+tmp
+web
+test
+docs
+sonar-project.properties
+coverage.out
+dist
