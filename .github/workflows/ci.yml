@@ -69,6 +69,14 @@ jobs:
       - name: Run gosec
         run: gosec -fmt sarif -out gosec.sarif ./... || true
 
+      - name: Fix gosec SARIF
+        if: always()
+        run: |
+          jq '(.runs[].tool.driver.rules // []) |= map(
+            if .relationships then .relationships |= map(select(. != null and type == "object")) else . end
+          )' gosec.sarif > gosec-fixed.sarif
+          mv gosec-fixed.sarif gosec.sarif
+
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@58d4c8134bcf8ae089f888d056501755e0da2b44 # v4
         if: always()
@@ -121,14 +129,10 @@ jobs:
         with:
           fetch-depth: 0  # required for blame/history analysis
 
-      - uses: actions/setup-go@v5
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v4
         with:
-          go-version: "1.26.0"
-          cache: true
-
-      - name: Generate coverage for SonarCloud
-        run: |
-          go test -coverprofile=coverage.out -covermode=atomic ./...
+          name: coverage-report
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@2f77a1ec69fb1d595b06f35ab27e97605bdef703 # v5

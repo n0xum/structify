@@ -1,0 +1,95 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/nextjs/**"
+      - ".github/workflows/deploy-frontend.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build & Deploy to Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        env:
+          SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          SSH_HOST: ${{ secrets.SERVER_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 400 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy frontend source to server
+        env:
+          SSH_USER: ${{ secrets.SERVER_USER }}
+          SSH_HOST: ${{ secrets.SERVER_HOST }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "$SSH_USER@$SSH_HOST" \
+            "mkdir -p /opt/structify-frontend"
+
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no" \
+            --exclude='node_modules' \
+            --exclude='.next' \
+            --exclude='out' \
+            web/nextjs/ "$SSH_USER@$SSH_HOST":/opt/structify-frontend/
+
+      - name: Build and deploy Docker container
+        env:
+          SSH_USER: ${{ secrets.SERVER_USER }}
+          SSH_HOST: ${{ secrets.SERVER_HOST }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "$SSH_USER@$SSH_HOST" << 'ENDSSH'
+            set -e
+
+            cd /home/n0xum/docker
+
+            sudo docker compose stop structify-frontend || true
+            sudo docker compose build --no-cache \
+              --build-arg NEXT_PUBLIC_API_URL=https://api-structify.alexander-kruska.dev \
+              structify-frontend
+            sudo docker compose up -d structify-frontend
+
+            sleep 5
+
+            sudo docker compose ps structify-frontend
+            sudo docker compose logs --tail=50 structify-frontend
+          ENDSSH
+
+      - name: Health check
+        env:
+          SSH_USER: ${{ secrets.SERVER_USER }}
+          SSH_HOST: ${{ secrets.SERVER_HOST }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "$SSH_USER@$SSH_HOST" << 'ENDSSH'
+            for i in {1..6}; do
+              if sudo docker compose exec -T structify-frontend wget -q --spider http://localhost:80 2>/dev/null; then
+                echo "Health check passed"
+                exit 0
+              fi
+              echo "Waiting for service... ($i/6)"
+              sleep 5
+            done
+            echo "Health check failed"
+            sudo docker compose logs --tail=100 structify-frontend
+            exit 1
+          ENDSSH
+
+      - name: Cleanup
+        if: always()
+        run: rm -f ~/.ssh/id_ed25519
+
+      - name: Deployment notification
+        if: success()
+        run: |
+          echo "Frontend deployed successfully"
+          echo "Version: $(git describe --tags --always)"
+          echo "Commit: ${{ github.sha }}"

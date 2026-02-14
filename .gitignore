@@ -5,6 +5,8 @@
 *.so
 *.dylib
 structify
+structify-server
+server
 
 # Test binary, built with `go test -c`
 *.test
