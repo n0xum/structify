@@ -78,7 +78,7 @@ jobs:
           mv gosec-fixed.sarif gosec.sarif
 
       - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@58d4c8134bcf8ae089f888d056501755e0da2b44 # v4
+        uses: github/codeql-action/upload-sarif@9e907b5e64f6b83e7804b09294d44122997950d6 # v4
         if: always()
         with:
           sarif_file: gosec.sarif
