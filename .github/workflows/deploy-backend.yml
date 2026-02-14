@@ -8,43 +8,98 @@ on:
       - "internal/**"
       - "go.mod"
       - "go.sum"
+      - "Dockerfile"
       - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:
 
 jobs:
   deploy:
-    name: Build & Deploy to Hetzner
+    name: Build & Deploy to Server
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
           go-version: "1.26.0"
           cache: true
 
-      - name: Cross-compile for Linux amd64
+      - name: Run tests
+        run: go test -v ./...
+
+      - name: Setup SSH
         run: |
-          GOOS=linux GOARCH=amd64 go build \
-            -ldflags="-s -w -X main.version=$(git describe --tags --always)" \
-            -o structify-server \
-            ./cmd/server/
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy binary to Hetzner VPS
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.HETZNER_HOST }}
-          username: ${{ secrets.HETZNER_USER }}
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: structify-server
-          target: /opt/structify/
+      - name: Deploy source code to server
+        run: |
+          # Alten Build-Ordner aufräumen
+          ssh -i ~/.ssh/id_ed25519 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "rm -rf /opt/structify-build/*"
+          
+          # Neue Source-Files kopieren
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no" \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='*.md' \
+            --exclude='tmp' \
+            ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/structify-build/
 
-      - name: Restart systemd service
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.HETZNER_HOST }}
-          username: ${{ secrets.HETZNER_USER }}
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          script: |
-            chmod +x /opt/structify/structify-server
-            sudo systemctl restart structify
+      - name: Build and deploy Docker container
+        run: |
+          ssh -i ~/.ssh/id_ed25519 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+            set -e
+          
+            cd /home/n0xum/docker
+          
+            # Container stoppen
+            sudo docker compose stop structify-backend || true
+
+            # Image neu bauen
+            sudo docker compose build --no-cache structify-backend
+
+            # Container starten
+            sudo docker compose up -d structify-backend
+
+            # Warten bis Container läuft
+            sleep 5
+
+            # Status prüfen
+            sudo docker compose ps structify-backend
+            sudo docker compose logs --tail=50 structify-backend
+          ENDSSH
+
+      - name: Health check
+        run: |
+          ssh -i ~/.ssh/id_ed25519 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+            # 30 Sekunden warten für Startup
+            for i in {1..6}; do
+              if sudo docker compose exec -T structify-backend wget -q --spider http://localhost:8088/health 2>/dev/null; then
+                echo "Health check passed"
+                exit 0
+              fi
+              echo "Waiting for service... ($i/6)"
+              sleep 5
+            done
+            echo "Health check failed"
+            sudo docker compose logs --tail=100 structify-backend
+            exit 1
+          ENDSSH
+
+      - name: Cleanup
+        if: always()
+        run: rm -f ~/.ssh/id_ed25519
+
+      - name: Deployment notification
+        if: success()
+        run: |
+          echo "Backend deployed successfully"
+          echo "Version: $(git describe --tags --always)"
+          echo "Commit: ${{ github.sha }}"

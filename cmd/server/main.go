@@ -26,7 +26,7 @@ func getAllowedOrigins() []string {
 		return strings.Split(env, ",")
 	}
 	return []string{
-		"https://n0xum.github.io",
+		"https://structify.alexander-kruska.dev",
 		"http://localhost:3000",
 	}
 }
@@ -99,6 +99,7 @@ func main() {
 	s := newServer()
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", s.handleHealth)
 	mux.HandleFunc("GET /api/version", s.handleVersion)
 	mux.HandleFunc("POST /api/generate/sql", s.handleGenerateSQL)
 	mux.HandleFunc("POST /api/generate/code", s.handleGenerateCode)
@@ -158,6 +159,10 @@ func corsMiddleware(limiter *rateLimiter, next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (s *server) handleHealth(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, map[string]string{"status": "ok"}, http.StatusOK)
 }
 
 func (s *server) handleVersion(w http.ResponseWriter, _ *http.Request) {
