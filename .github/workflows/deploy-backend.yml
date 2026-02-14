@@ -82,12 +82,14 @@ jobs:
           SSH_HOST: ${{ secrets.SERVER_HOST }}
         run: |
           ssh -i ~/.ssh/id_ed25519 "$SSH_USER@$SSH_HOST" << 'ENDSSH'
-            for i in {1..6}; do
-              if sudo docker compose exec -T structify-backend wget -q --spider http://localhost:8088/health 2>/dev/null; then
+            cd /home/n0xum/docker
+            for i in {1..12}; do
+              STATUS=$(sudo docker inspect --format='{{.State.Health.Status}}' structify-backend 2>/dev/null || echo "unknown")
+              if [ "$STATUS" = "healthy" ]; then
                 echo "Health check passed"
                 exit 0
               fi
-              echo "Waiting for service... ($i/6)"
+              echo "Waiting for healthy status... ($STATUS) ($i/12)"
               sleep 5
             done
             echo "Health check failed"
