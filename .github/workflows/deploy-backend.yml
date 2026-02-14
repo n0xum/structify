@@ -31,55 +31,57 @@ jobs:
         run: go test -v ./...
 
       - name: Setup SSH
+        env:
+          SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          SSH_HOST: ${{ secrets.SERVER_HOST }}
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
 
       - name: Deploy source code to server
+        env:
+          SSH_USER: ${{ secrets.SERVER_USER }}
+          SSH_HOST: ${{ secrets.SERVER_HOST }}
         run: |
-          # Alten Build-Ordner aufräumen
-          ssh -i ~/.ssh/id_ed25519 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+          ssh -i ~/.ssh/id_ed25519 "$SSH_USER@$SSH_HOST" \
             "rm -rf /opt/structify-build/*"
-          
-          # Neue Source-Files kopieren
+
           rsync -avz --delete \
             -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no" \
             --exclude='.git' \
             --exclude='.github' \
             --exclude='*.md' \
             --exclude='tmp' \
-            ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/structify-build/
+            ./ "$SSH_USER@$SSH_HOST":/opt/structify-build/
 
       - name: Build and deploy Docker container
+        env:
+          SSH_USER: ${{ secrets.SERVER_USER }}
+          SSH_HOST: ${{ secrets.SERVER_HOST }}
         run: |
-          ssh -i ~/.ssh/id_ed25519 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+          ssh -i ~/.ssh/id_ed25519 "$SSH_USER@$SSH_HOST" << 'ENDSSH'
             set -e
-          
+
             cd /home/n0xum/docker
-          
-            # Container stoppen
+
             sudo docker compose stop structify-backend || true
-
-            # Image neu bauen
             sudo docker compose build --no-cache structify-backend
-
-            # Container starten
             sudo docker compose up -d structify-backend
 
-            # Warten bis Container läuft
             sleep 5
 
-            # Status prüfen
             sudo docker compose ps structify-backend
             sudo docker compose logs --tail=50 structify-backend
           ENDSSH
 
       - name: Health check
+        env:
+          SSH_USER: ${{ secrets.SERVER_USER }}
+          SSH_HOST: ${{ secrets.SERVER_HOST }}
         run: |
-          ssh -i ~/.ssh/id_ed25519 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
-            # 30 Sekunden warten für Startup
+          ssh -i ~/.ssh/id_ed25519 "$SSH_USER@$SSH_HOST" << 'ENDSSH'
             for i in {1..6}; do
               if sudo docker compose exec -T structify-backend wget -q --spider http://localhost:8088/health 2>/dev/null; then
                 echo "Health check passed"

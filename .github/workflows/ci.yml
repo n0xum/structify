@@ -73,7 +73,7 @@ jobs:
         if: always()
         run: |
           jq '(.runs[].tool.driver.rules // []) |= map(
-            if .relationships then .relationships |= map(if type == "array" then .[0] else . end) else . end
+            if .relationships then .relationships |= map(select(. != null and type == "object")) else . end
           )' gosec.sarif > gosec-fixed.sarif
           mv gosec-fixed.sarif gosec.sarif
 
