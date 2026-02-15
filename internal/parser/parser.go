@@ -164,7 +164,9 @@ func exprToString(expr ast.Expr) string {
 }
 
 func parseDBTag(tag string) string {
-	parts := strings.Split(tag, " ")
+	// Parse struct tags which have format: key1:"value1" key2:"value2"
+	// Find the db: key and return its value
+	parts := parseTagParts(tag)
 	for _, part := range parts {
 		if strings.HasPrefix(part, "db:") {
 			value := strings.TrimPrefix(part, "db:")
@@ -173,6 +175,36 @@ func parseDBTag(tag string) string {
 		}
 	}
 	return ""
+}
+
+// parseTagParts splits a struct tag into key:value parts
+// e.g., `db:"value" json:"field"` -> ["db:\"value\"", "json:\"field\""]
+func parseTagParts(tag string) []string {
+	var parts []string
+	var current strings.Builder
+	inQuotes := false
+
+	for i := 0; i < len(tag); i++ {
+		c := tag[i]
+		switch c {
+		case '"':
+			inQuotes = !inQuotes
+			current.WriteByte(c)
+		case ' ':
+			if inQuotes {
+				current.WriteByte(c)
+			} else if current.Len() > 0 {
+				parts = append(parts, current.String())
+				current.Reset()
+			}
+		default:
+			current.WriteByte(c)
+		}
+	}
+	if current.Len() > 0 {
+		parts = append(parts, current.String())
+	}
+	return parts
 }
 
 func toSnakeCase(s string) string {
