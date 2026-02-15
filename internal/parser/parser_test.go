@@ -48,6 +48,42 @@ func TestParserGetStructs(t *testing.T) {
 	}
 }
 
+func TestParserResetsBetweenCalls(t *testing.T) {
+	p := New()
+
+	err := p.ParseFiles([]string{"../../test/fixtures/user.go"})
+	if err != nil {
+		t.Fatalf("first ParseFiles() error = %v", err)
+	}
+
+	err = p.ParseFiles([]string{"../../test/fixtures/user.go"})
+	if err != nil {
+		t.Fatalf("second ParseFiles() error = %v", err)
+	}
+
+	structs := p.GetStructs()
+	total := 0
+	for _, s := range structs {
+		total += len(s)
+	}
+
+	// Must not accumulate — same file parsed twice should yield same count
+	err = New().ParseFiles([]string{"../../test/fixtures/user.go"})
+	if err != nil {
+		t.Fatalf("fresh ParseFiles() error = %v", err)
+	}
+	fresh := New()
+	_ = fresh.ParseFiles([]string{"../../test/fixtures/user.go"})
+	expected := 0
+	for _, s := range fresh.GetStructs() {
+		expected += len(s)
+	}
+
+	if total != expected {
+		t.Errorf("parser accumulated state: got %d structs after 2 calls, expected %d", total, expected)
+	}
+}
+
 func TestParseDBTag(t *testing.T) {
 	tests := []struct {
 		name     string
