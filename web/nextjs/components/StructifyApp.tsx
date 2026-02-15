@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Editor } from "./Editor";
 import { OutputPanel } from "./OutputPanel";
 import { ModeSelector, type Mode } from "./ModeSelector";
@@ -10,6 +11,7 @@ import { TagReference } from "./TagReference";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { generateSQL, generateCode, fetchVersion } from "@/lib/api";
 import { validateInput, validatePackageName } from "@/lib/validation";
+import { EXAMPLES } from "@/lib/examples";
 
 const STORAGE_KEY = "structify_input";
 const DEFAULT_PLACEHOLDER = `package models
@@ -46,6 +48,26 @@ export function StructifyApp() {
     } catch {
       // localStorage unavailable
     }
+  }, []);
+
+  // Load example from ?load= query param (runs after localStorage so it can override)
+  useEffect(() => {
+    const loadLabel = searchParams.get("load");
+    if (!loadLabel) return;
+
+    const example = EXAMPLES.find((e) => e.label === loadLabel);
+    if (!example) return;
+
+    setInput(example.source);
+    setOutput("");
+    setError(null);
+    pendingGenerate.current = true;
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("load");
+    const newSearch = params.toString();
+    router.replace(newSearch ? `?${newSearch}` : "/", { scroll: false });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Persist input to localStorage
@@ -159,6 +181,12 @@ export function StructifyApp() {
           </div>
           <div className="flex items-center gap-3">
             <ExampleLoader onSelect={handleExampleSelect} />
+            <Link
+              href="/docs"
+              className="text-zinc-400 hover:text-zinc-200 transition-colors text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 rounded"
+            >
+              Docs
+            </Link>
             <a
               href="https://github.com/n0xum/structify"
               target="_blank"

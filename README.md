@@ -1,6 +1,21 @@
 # structify
 
-CLI tool to convert Go domain models to PostgreSQL database schemas and database/sql CRUD code.
+Structify reads Go structs and generates two things from them: a PostgreSQL schema and ready-to-use `database/sql` CRUD code. You annotate your struct fields with `db` tags to control how the output looks — primary keys, foreign keys, indexes, constraints, and more. No ORM, no reflection at runtime, just generated SQL and Go code you can read and own.
+
+Try it in the browser at [structify.alexander-kruska.dev](https://structify.alexander-kruska.dev).
+
+## What it generates
+
+**SQL mode** (`--to-sql`) produces `CREATE TABLE` statements with all constraints inline:
+
+- Primary keys, including composite primary keys across multiple fields
+- `UNIQUE` constraints, individually or grouped by name
+- `CHECK` constraints and `DEFAULT` values
+- Enum checks using `IN (...)` clauses
+- Named and unnamed indexes, including unique indexes
+- Foreign keys with optional `ON DELETE` / `ON UPDATE` cascade rules, including composite foreign keys
+
+**Code mode** (`--to-db-sql`) produces Go functions for `Create`, `GetByID`, `Update`, `Delete`, and `List`, using only the standard `database/sql` package. If foreign keys are defined, it also generates `JOIN` queries between related tables.
 
 ## Installation
 
@@ -16,196 +31,110 @@ cd structify
 go build ./cmd/structify
 ```
 
-## Setup
-
-1. Create Go struct files with your domain models
-2. Add struct tags to define database behavior
-3. Run structify with the appropriate flag
-
 ## Struct Tags
 
-Add `db` tags to your struct fields to control database behavior:
-
-- `db:"pk"` - Mark field as primary key
-- `db:"unique"` - Add UNIQUE constraint
-- `db:"-"` - Exclude field from database
-- `db:"table:name"` - Override table name
+| Tag | Effect |
+|-----|--------|
+| `db:"pk"` | Primary key (use on multiple fields for a composite key) |
+| `db:"unique"` | UNIQUE constraint |
+| `db:"unique:group_name"` | Composite unique constraint grouped by name |
+| `db:"-"` | Exclude field from all output |
+| `db:"table:name"` | Override the generated table name (on the struct itself) |
+| `db:"check:expr"` | CHECK constraint with the given expression |
+| `db:"default:val"` | DEFAULT value |
+| `db:"enum:a,b,c"` | CHECK constraint using `IN (a, b, c)` |
+| `db:"index"` | Auto-named index |
+| `db:"index:idx_name"` | Named index (same name on multiple fields creates a composite index) |
+| `db:"unique_index"` | Auto-named unique index |
+| `db:"unique_index:uq_name"` | Named unique index |
+| `db:"fk:table,col"` | Foreign key referencing `table(col)` |
+| `db:"fk:table,col,on_delete:CASCADE"` | Foreign key with cascade option |
+| `db:"fk:name,table,col"` | Composite foreign key (same name groups columns together) |
 
 ## Usage
 
-Generate PostgreSQL schema:
+Generate a PostgreSQL schema:
 
 ```bash
 structify --to-sql ./models/user.go
 ```
 
-Generate database/sql CRUD code:
+Generate `database/sql` CRUD code:
 
 ```bash
 structify --to-db-sql ./models/user.go
 ```
 
-Parse and validate without generating output:
-
-```bash
-structify ./models/user.go
-```
-
-Write output to file:
+Write output to a file:
 
 ```bash
 structify --to-sql ./models/user.go -o schema.sql
 structify --to-db-sql ./models/user.go -o user_repo.go
 ```
 
-Process multiple files:
+Process multiple files at once:
 
 ```bash
 structify --to-sql ./models/*.go
 ```
 
-## Type Mapping
-
-| Go Type | PostgreSQL Type |
-|---------|----------------|
-| int64 | BIGINT |
-| string | VARCHAR(255) |
-| bool | BOOLEAN |
-| float64 | DOUBLE PRECISION |
-| time.Time | TIMESTAMP |
-| []byte | BYTEA |
-
 ## Example
 
-Input file `models/user.go`:
+Input (`models/user.go`):
 
 ```go
 package models
 
 type User struct {
-    ID       int64     `db:"pk"`
-    Username string    `db:"unique"`
-    Email    string
-    Active   bool
-    Created  int64
+    ID       int64  `db:"pk"`
+    Username string `db:"unique"`
+    Email    string `db:"unique_index:uq_email"`
+    Active   bool   `db:"default:true"`
+    Age      int    `db:"check:age >= 0"`
 }
 ```
 
-Run:
-
-```bash
-structify --to-sql ./models/user.go
-```
-
-Output:
+SQL output:
 
 ```sql
 CREATE TABLE "user" (
     "id" BIGINT PRIMARY KEY,
     "username" VARCHAR(255) UNIQUE,
-    "email" VARCHAR(255),
-    "active" BOOLEAN NOT NULL,
-    "created" BIGINT NOT NULL
+    "email" VARCHAR(255) NOT NULL,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "age" INTEGER NOT NULL CHECK (age >= 0)
 );
+
+CREATE UNIQUE INDEX "uq_email" ON "user" ("email");
 ```
 
-Run:
+## Type Mapping
 
-```bash
-structify --to-db-sql ./models/user.go
-```
-
-Output:
-
-```go
-package main
-
-import (
-    "database/sql"
-    "context"
-)
-
-type User struct {
-    ID int64
-    Username string
-    Email string
-    Active bool
-    Created int64
-}
-
-func CreateUser(ctx context.Context, db *sql.DB, item *User) (*User, error) {
-    query := `INSERT INTO user (username, email, active, created) VALUES ($1, $2, $3, $4) RETURNING id`
-    var id int64
-    err := db.QueryRowContext(ctx, query, item.Username, item.Email, item.Active, item.Created).Scan(&id)
-    if err != nil {
-        return nil, err
-    }
-    return GetUserByID(ctx, db, id)
-}
-
-func GetUserByID(ctx context.Context, db *sql.DB, id int64) (*User, error) {
-    query := `SELECT id, username, email, active, created FROM user WHERE id = $1`
-    var item User
-    err := db.QueryRowContext(ctx, query, id).Scan(&item.ID, &item.Username, &item.Email, &item.Active, &item.Created)
-    if err != nil {
-        return nil, err
-    }
-    return &item, nil
-}
-
-func UpdateUser(ctx context.Context, db *sql.DB, item *User) error {
-    query := `UPDATE user SET username = $1, email = $2, active = $3, created = $4 WHERE id = $5`
-    _, err := db.ExecContext(ctx, query, item.Username, item.Email, item.Active, item.Created, item.ID)
-    return err
-}
-
-func DeleteUser(ctx context.Context, db *sql.DB, id int64) error {
-    query := `DELETE FROM user WHERE id = $1`
-    _, err := db.ExecContext(ctx, query, id)
-    return err
-}
-
-func ListUser(ctx context.Context, db *sql.DB) ([]*User, error) {
-    query := `SELECT id, username, email, active, created FROM user ORDER BY id`
-    rows, err := db.QueryContext(ctx, query)
-    if err != nil {
-        return nil, err
-    }
-    defer rows.Close()
-
-    var items []*User
-    for rows.Next() {
-        var item User
-        if err := rows.Scan(&item.ID, &item.Username, &item.Email, &item.Active, &item.Created); err != nil {
-            return nil, err
-        }
-        items = append(items, &item)
-    }
-    return items, nil
-}
-```
+| Go type | PostgreSQL type |
+|---------|----------------|
+| `int`, `int32` | `INTEGER` |
+| `int64` | `BIGINT` |
+| `string` | `VARCHAR(255)` |
+| `bool` | `BOOLEAN` |
+| `float32` | `REAL` |
+| `float64` | `DOUBLE PRECISION` |
+| `time.Time` | `TIMESTAMP` |
+| `[]byte` | `BYTEA` |
 
 ## Flags
 
-- `--to-sql, --to-schema` - Generate PostgreSQL CREATE TABLE statements
-- `--to-db-sql, --to-dbcode` - Generate database/sql CRUD code
-- `--from-json` - Convert JSON to Go struct (not yet implemented)
-- `--json-file, -f` - JSON input file for --from-json
-- `--output, -o` - Output file (default: stdout)
-- `--version, -v` - Show version
-- `--help` - Show help message
+| Flag | Description |
+|------|-------------|
+| `--to-sql`, `--to-schema` | Generate PostgreSQL CREATE TABLE statements |
+| `--to-db-sql`, `--to-dbcode` | Generate database/sql CRUD code |
+| `--output`, `-o` | Write output to file instead of stdout |
+| `--version`, `-v` | Print version |
+| `--help` | Show help |
 
 ## Development
 
-Run tests:
-
 ```bash
 go test ./...
-```
-
-Build:
-
-```bash
 go build ./cmd/structify
 ```
 

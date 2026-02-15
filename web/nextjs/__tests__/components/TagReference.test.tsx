@@ -34,4 +34,39 @@ describe("TagReference", () => {
     await user.click(btn);
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
+
+  it("shows all tag groups when open", async () => {
+    const user = userEvent.setup();
+    render(<TagReference />);
+
+    await user.click(screen.getByLabelText("Show db tag reference"));
+    expect(screen.getByText("Constraints")).toBeInTheDocument();
+    expect(screen.getByText("Indexes")).toBeInTheDocument();
+    expect(screen.getByText("Foreign Keys")).toBeInTheDocument();
+    expect(screen.getByText("Composite")).toBeInTheDocument();
+  });
+
+  it("shows check constraint tag", async () => {
+    const user = userEvent.setup();
+    render(<TagReference />);
+
+    await user.click(screen.getByLabelText("Show db tag reference"));
+    expect(screen.getByText('db:"check:age >= 18"')).toBeInTheDocument();
+  });
+
+  it("shows foreign key tag", async () => {
+    const user = userEvent.setup();
+    render(<TagReference />);
+
+    await user.click(screen.getByLabelText("Show db tag reference"));
+    expect(screen.getByText('db:"fk:users,id"')).toBeInTheDocument();
+  });
+
+  it("shows enum tag", async () => {
+    const user = userEvent.setup();
+    render(<TagReference />);
+
+    await user.click(screen.getByLabelText("Show db tag reference"));
+    expect(screen.getByText('db:"enum:a,b,c"')).toBeInTheDocument();
+  });
 });
