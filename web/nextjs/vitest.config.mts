@@ -9,5 +9,17 @@ export default defineConfig({
     setupFiles: ["./vitest.setup.ts"],
     globals: true,
     css: false,
+    coverage: {
+      provider: "v8",
+      include: ["components/**", "lib/**", "app/**"],
+      exclude: ["app/layout.tsx"],
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 80,
+        statements: 80,
+      },
+      reporter: ["text", "lcov"],
+    },
   },
 });
