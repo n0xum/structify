@@ -34,6 +34,7 @@ export function StructifyApp() {
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [version, setVersion] = useState<string | null>(null);
+  const [outputKey, setOutputKey] = useState(0);
 
   const outputRef = useRef<HTMLDivElement>(null);
   const pendingGenerate = useRef(false);
@@ -90,6 +91,7 @@ export function StructifyApp() {
           ? await generateSQL(source)
           : await generateCode(source, packageName);
       setOutput(result);
+      setOutputKey((k) => k + 1);
 
       if (window.innerWidth < 768) {
         setTimeout(() => outputRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
@@ -256,7 +258,7 @@ export function StructifyApp() {
 
           {/* Right panel — output */}
           <div ref={outputRef} className="flex flex-col flex-1 min-h-[300px] md:min-h-0">
-            <OutputPanel output={output} mode={mode} />
+            <OutputPanel output={output} mode={mode} outputKey={outputKey} />
           </div>
         </main>
       </div>
