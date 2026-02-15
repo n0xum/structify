@@ -6,7 +6,7 @@ type ExampleLoaderProps = {
   onSelect: (source: string) => void;
 };
 
-export function ExampleLoader({ onSelect }: ExampleLoaderProps) {
+export function ExampleLoader({ onSelect }: Readonly<ExampleLoaderProps>) {
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const example = EXAMPLES.find((ex) => ex.label === e.target.value);
     if (example) onSelect(example.source);

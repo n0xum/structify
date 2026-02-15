@@ -52,9 +52,9 @@ const DynamicEditor = dynamic(
   { ssr: false }
 );
 
-export function Editor({ value, onChange, language, readOnly, placeholder, label, id }: EditorProps) {
+export function Editor({ value, onChange, language, readOnly, placeholder, label, id }: Readonly<EditorProps>) {
   return (
-    <div className="flex flex-col h-full" role="region" aria-label={label}>
+    <section className="flex flex-col h-full" aria-label={label}>
       <div
         id={id}
         className="flex-1 overflow-auto rounded-lg border border-zinc-700 text-sm font-mono"
@@ -67,6 +67,6 @@ export function Editor({ value, onChange, language, readOnly, placeholder, label
           placeholder={placeholder}
         />
       </div>
-    </div>
+    </section>
   );
 }

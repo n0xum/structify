@@ -9,7 +9,7 @@ type OutputPanelProps = {
   mode: Mode;
 };
 
-export function OutputPanel({ output, mode }: OutputPanelProps) {
+export function OutputPanel({ output, mode }: Readonly<OutputPanelProps>) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {

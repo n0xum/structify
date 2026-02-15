@@ -91,7 +91,7 @@ export function StructifyApp() {
           : await generateCode(source, packageName);
       setOutput(result);
 
-      if (window.innerWidth < 768) {
+      if (globalThis.innerWidth < 768) {
         setTimeout(() => outputRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
       }
     } catch (err) {
@@ -117,8 +117,8 @@ export function StructifyApp() {
         handleGenerate();
       }
     }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    globalThis.addEventListener("keydown", handleKeyDown);
+    return () => globalThis.removeEventListener("keydown", handleKeyDown);
   }, [handleGenerate]);
 
   function handleModeChange(newMode: Mode) {
