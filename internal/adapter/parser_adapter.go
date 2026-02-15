@@ -100,37 +100,6 @@ func (a *ParserAdapter) toDomainField(pField parser.Field) entity.Field {
 		}
 	}
 
-	// Parse complex tags: check:, default:, index:, enum:, fk:, etc.
-	for _, tag := range tags {
-		switch {
-		case strings.HasPrefix(tag, "check:"):
-			domainField.CheckExpr = strings.TrimPrefix(tag, "check:")
-		case strings.HasPrefix(tag, "default:"):
-			domainField.DefaultVal = strings.TrimPrefix(tag, "default:")
-		case strings.HasPrefix(tag, "enum:"):
-			enumStr := strings.TrimPrefix(tag, "enum:")
-			domainField.EnumValues = a.parseEnumValues(enumStr)
-		case tag == "index":
-			// Auto-generate index name
-			domainField.IndexName = a.autoGenerateIndexName(pField.Name)
-		case strings.HasPrefix(tag, "index:"):
-			indexName := strings.TrimPrefix(tag, "index:")
-			domainField.IndexName = indexName
-			domainField.IndexGroup = indexName
-		case tag == "unique_index":
-			domainField.IndexName = a.autoGenerateIndexName(pField.Name)
-			domainField.IsIndexUnique = true
-		case strings.HasPrefix(tag, "unique_index:"):
-			indexName := strings.TrimPrefix(tag, "unique_index:")
-			domainField.IndexName = indexName
-			domainField.IndexGroup = indexName
-			domainField.IsIndexUnique = true
-		case strings.HasPrefix(tag, "fk:"):
-			// Parse foreign key: fk:table,column[,on_delete:action][,on_update:action]
-			a.parseForeignKey(tag, &domainField)
-		}
-	}
-
 	return domainField
 }
 

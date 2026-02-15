@@ -165,6 +165,19 @@ CREATE TABLE order_item_notes (
 
 const NAV_LINKS = SECTIONS.map((s) => ({ id: s.id, title: s.title }));
 
+function CodeBlock({ label, code }: { label: string; code: string }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-xs font-medium text-zinc-500 uppercase tracking-widest">
+        {label}
+      </span>
+      <pre className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 overflow-x-auto">
+        <code className="font-mono text-sm text-zinc-300 whitespace-pre">{code}</code>
+      </pre>
+    </div>
+  );
+}
+
 export default function DocsPage() {
   return (
     <div className="flex min-h-screen bg-zinc-950 text-zinc-100">
@@ -223,29 +236,8 @@ export default function DocsPage() {
               <p className="text-zinc-400 text-sm mb-5">{section.description}</p>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Go block */}
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-zinc-500 uppercase tracking-widest">
-                    Go
-                  </span>
-                  <pre className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 overflow-x-auto">
-                    <code className="font-mono text-sm text-zinc-300 whitespace-pre">
-                      {section.goCode}
-                    </code>
-                  </pre>
-                </div>
-
-                {/* SQL block */}
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-zinc-500 uppercase tracking-widest">
-                    SQL
-                  </span>
-                  <pre className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 overflow-x-auto">
-                    <code className="font-mono text-sm text-zinc-300 whitespace-pre">
-                      {section.sqlCode}
-                    </code>
-                  </pre>
-                </div>
+                <CodeBlock label="Go" code={section.goCode} />
+                <CodeBlock label="SQL" code={section.sqlCode} />
               </div>
             </section>
           ))}
