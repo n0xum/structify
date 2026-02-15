@@ -7,9 +7,10 @@ import type { Mode } from "./ModeSelector";
 type OutputPanelProps = {
   output: string;
   mode: Mode;
+  outputKey?: number;
 };
 
-export function OutputPanel({ output, mode }: OutputPanelProps) {
+export function OutputPanel({ output, mode, outputKey }: OutputPanelProps) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
@@ -38,6 +39,7 @@ export function OutputPanel({ output, mode }: OutputPanelProps) {
       {output ? (
         <div className="flex-1 min-h-0">
           <Editor
+            key={outputKey}
             value={output}
             language={mode === "sql" ? "sql" : "go"}
             readOnly
