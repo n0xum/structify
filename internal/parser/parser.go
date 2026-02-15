@@ -79,6 +79,8 @@ func New() *Parser {
 }
 
 func (p *Parser) ParseFiles(paths []string) error {
+	p.structs = make(map[string][]*Struct)
+	p.pkgName = ""
 	for _, path := range paths {
 		if err := p.parseFile(path); err != nil {
 			return fmt.Errorf("parse file %s: %w", path, err)

@@ -5,7 +5,7 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o server ./cmd/server/
 
-FROM alpine:latest
+FROM alpine:3.21
 RUN apk --no-cache add ca-certificates wget && \
     addgroup -S appgroup && adduser -S appuser -G appgroup
 WORKDIR /app

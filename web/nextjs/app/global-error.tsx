@@ -1,11 +1,13 @@
 "use client";
 
 export default function GlobalError({
+  error: _error,
   reset,
-}: {
+}: Readonly<{
   error: Error & { digest?: string };
   reset: () => void;
-}) {
+}>) {
+  void _error;
   return (
     <html lang="en">
       <body

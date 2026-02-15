@@ -1,7 +1,5 @@
-export type ValidationWarning = string;
-
-export function validateInput(source: string): ValidationWarning[] {
-  const warnings: ValidationWarning[] = [];
+export function validateInput(source: string): string[] {
+  const warnings: string[] = [];
 
   if (!source.trim()) {
     warnings.push("Input is empty.");

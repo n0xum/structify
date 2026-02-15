@@ -37,7 +37,7 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_KEY" > ~/.ssh/id_ed25519
-          chmod 400 ~/.ssh/id_ed25519
+          chmod u=r,go= ~/.ssh/id_ed25519
           ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
 
       - name: Deploy source code to server
@@ -83,13 +83,12 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_ed25519 "$SSH_USER@$SSH_HOST" << 'ENDSSH'
             cd /home/n0xum/docker
-            for i in {1..12}; do
-              STATUS=$(sudo docker inspect --format='{{.State.Health.Status}}' structify-backend 2>/dev/null || echo "unknown")
-              if [ "$STATUS" = "healthy" ]; then
+            for i in $(seq 1 12); do
+              if sudo docker compose ps structify-backend --format json | grep -q '"healthy"'; then
                 echo "Health check passed"
                 exit 0
               fi
-              echo "Waiting for healthy status... ($STATUS) ($i/12)"
+              echo "Waiting for healthy status... ($i/12)"
               sleep 5
             done
             echo "Health check failed"
