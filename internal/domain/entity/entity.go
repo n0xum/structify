@@ -1,6 +1,8 @@
 package entity
 
-import "errors"
+import (
+	"errors"
+)
 
 var ErrInvalidEntity = errors.New("invalid entity")
 var ErrEntityNameRequired = errors.New("entity name is required")
@@ -39,16 +41,71 @@ func (e *Entity) Validate() error {
 }
 
 func (e *Entity) GetPrimaryKeyField() *Field {
-	for i := range e.Fields {
-		if e.Fields[i].IsPrimary {
-			return &e.Fields[i]
-		}
+	pkFields := e.GetPrimaryKeyFields()
+	if len(pkFields) == 1 {
+		return &pkFields[0]
 	}
 	return nil
 }
 
+// GetPrimaryKeyFields returns all primary key fields
+func (e *Entity) GetPrimaryKeyFields() []Field {
+	var pkFields []Field
+	for _, field := range e.Fields {
+		if field.IsPrimary {
+			pkFields = append(pkFields, field)
+		}
+	}
+	return pkFields
+}
+
 func (e *Entity) HasPrimaryKey() bool {
-	return e.GetPrimaryKeyField() != nil
+	return len(e.GetPrimaryKeyFields()) > 0
+}
+
+// HasCompositePrimaryKey returns true if the entity has a composite primary key
+func (e *Entity) HasCompositePrimaryKey() bool {
+	return len(e.GetPrimaryKeyFields()) > 1
+}
+
+// GetUniqueConstraints returns all unique constraint definitions
+func (e *Entity) GetUniqueConstraints() map[string][]Field {
+	constraints := make(map[string][]Field)
+
+	// Group fields by their IndexGroup to find composite constraints
+	groups := make(map[string][]Field)
+
+	for _, field := range e.Fields {
+		if field.IsUnique {
+			if field.IndexGroup != "" {
+				// Part of a named unique constraint
+				groups[field.IndexGroup] = append(groups[field.IndexGroup], field)
+			} else {
+				// Single unique constraint - use field name as key
+				constraints[field.Name] = []Field{field}
+			}
+		}
+	}
+
+	// Add groups to constraints (only composite ones, single fields already added)
+	for groupName, fields := range groups {
+		if len(fields) > 1 {
+			constraints[groupName] = fields
+		}
+	}
+
+	return constraints
+}
+
+// HasCompositeUniqueConstraints returns true if the entity has composite unique constraints
+func (e *Entity) HasCompositeUniqueConstraints() bool {
+	constraints := e.GetUniqueConstraints()
+	for _, fields := range constraints {
+		if len(fields) > 1 {
+			return true
+		}
+	}
+	return false
 }
 
 func (e *Entity) GetGenerateableFields() []Field {
