@@ -18,7 +18,7 @@ export function ExampleLoader({ onSelect }: Readonly<ExampleLoaderProps>) {
       defaultValue=""
       onChange={handleChange}
       aria-label="Load example struct"
-      className="bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1.5 text-sm text-zinc-300 focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
+      className="bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1.5 text-sm text-zinc-300 focus:outline-none focus:ring-2 focus:ring-zinc-400 cursor-pointer"
     >
       <option value="" disabled>
         Load example…

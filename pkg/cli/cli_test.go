@@ -42,38 +42,39 @@ func TestCommandParse(t *testing.T) {
 
 func TestCommandValidate(t *testing.T) {
 	tests := []struct {
-		name   string
-		toSQL  bool
-		toDBCode bool
-		fromJSON bool
-		jsonFile string
-		wantErr bool
+		name          string
+		toSQL         bool
+		toRepo        bool
+		modelFile     string
+		interfaceFile string
+		wantErr       bool
 	}{
 		{
-			name:   "all flags false",
+			name:    "all flags false",
 			wantErr: true,
 		},
 		{
-			name:   "to SQL only",
-			toSQL:  true,
+			name:    "to SQL only",
+			toSQL:   true,
 			wantErr: false,
 		},
 		{
-			name:   "to DB code only",
-			toDBCode: true,
-			wantErr: false,
-		},
-		{
-			name:   "from JSON without file",
-			fromJSON: true,
-			jsonFile:  "",
+			name:    "to-repo without model",
+			toRepo:  true,
 			wantErr: true,
 		},
 		{
-			name:   "from JSON with file",
-			fromJSON: true,
-			jsonFile:  "test.json",
-			wantErr: false,
+			name:      "to-repo without interface",
+			toRepo:    true,
+			modelFile: "model.go",
+			wantErr:   true,
+		},
+		{
+			name:          "to-repo with both",
+			toRepo:        true,
+			modelFile:     "model.go",
+			interfaceFile: "repo.go",
+			wantErr:       false,
 		},
 	}
 
@@ -81,9 +82,9 @@ func TestCommandValidate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := NewCommand()
 			cmd.ToSQL = tt.toSQL
-			cmd.ToDBCode = tt.toDBCode
-			cmd.FromJSON = tt.fromJSON
-			cmd.JSONFile = tt.jsonFile
+			cmd.ToRepo = tt.toRepo
+			cmd.ModelFile = tt.modelFile
+			cmd.InterfaceFile = tt.interfaceFile
 
 			err := cmd.Validate()
 			if tt.wantErr && err == nil {

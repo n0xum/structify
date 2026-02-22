@@ -38,7 +38,6 @@ func TestAppRunNoFlag(t *testing.T) {
 }
 
 func TestAppRunToSQLNoStructs(t *testing.T) {
-	// Create a temp file with no exported structs
 	tmp, err := os.CreateTemp("", "empty_*.go")
 	if err != nil {
 		t.Fatal(err)
@@ -54,41 +53,7 @@ func TestAppRunToSQLNoStructs(t *testing.T) {
 	}
 }
 
-func TestAppRunToDBCodeNoStructs(t *testing.T) {
-	tmp, err := os.CreateTemp("", "empty_*.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(tmp.Name())
-	tmp.WriteString("package test\n")
-	tmp.Close()
-
-	app := New("1.0.0")
-	err = app.Run([]string{"structify", "--to-db-sql", tmp.Name()})
-	if err == nil {
-		t.Error("Run() --to-db-sql with no structs should return error")
-	}
-}
-
-func TestAppRunFromJSONNoFile(t *testing.T) {
-	app := New("1.0.0")
-	err := app.Run([]string{"structify", "--from-json", "somefile.go"})
-	if err == nil {
-		t.Error("Run() --from-json without --json-file should return error")
-	}
-}
-
-func TestAppRunFromJSON(t *testing.T) {
-	app := New("1.0.0")
-	err := app.Run([]string{"structify", "--from-json", "--json-file", "test.json", "somefile.go"})
-	// convertJSON not yet implemented, should return error
-	if err == nil {
-		t.Error("Run() --from-json should return error (not implemented)")
-	}
-}
-
 func TestAppRunToSQLWithOutput(t *testing.T) {
-	// Use the real fixture file
 	fixture := "../../test/fixtures/user.go"
 	if _, err := os.Stat(fixture); os.IsNotExist(err) {
 		t.Skip("fixture not found")
@@ -105,24 +70,69 @@ func TestAppRunToSQLWithOutput(t *testing.T) {
 	}
 }
 
-func TestAppRunToDBCodeWithOutput(t *testing.T) {
-	fixture := "../../test/fixtures/user.go"
-	if _, err := os.Stat(fixture); os.IsNotExist(err) {
+func TestAppRunToRepoMissingModel(t *testing.T) {
+	app := New("1.0.0")
+	err := app.Run([]string{"structify", "--to-repo", "--interface", "repo.go"})
+	if err == nil {
+		t.Error("Run() --to-repo without --model should return error")
+	}
+}
+
+func TestAppRunToRepoMissingInterface(t *testing.T) {
+	app := New("1.0.0")
+	err := app.Run([]string{"structify", "--to-repo", "--model", "model.go"})
+	if err == nil {
+		t.Error("Run() --to-repo without --interface should return error")
+	}
+}
+
+func TestAppRunToRepoSuccess(t *testing.T) {
+	modelFixture := "../../test/fixtures/user.go"
+	ifaceFixture := "../../test/fixtures/user_repository.go"
+	if _, err := os.Stat(modelFixture); os.IsNotExist(err) {
+		t.Skip("model fixture not found")
+	}
+	if _, err := os.Stat(ifaceFixture); os.IsNotExist(err) {
+		t.Skip("interface fixture not found")
+	}
+
+	tmp := filepath.Join(t.TempDir(), "out.gen.go")
+	app := New("1.0.0")
+	err := app.Run([]string{"structify", "--to-repo", "--model", modelFixture, "--interface", ifaceFixture, "-o", tmp})
+	if err != nil {
+		t.Errorf("Run() --to-repo error = %v", err)
+	}
+	if _, err := os.Stat(tmp); os.IsNotExist(err) {
+		t.Error("output file not created")
+	}
+}
+
+func TestAppRunToRepoNoInterfaces(t *testing.T) {
+	modelFixture := "../../test/fixtures/user.go"
+	if _, err := os.Stat(modelFixture); os.IsNotExist(err) {
 		t.Skip("fixture not found")
 	}
 
-	tmp := filepath.Join(t.TempDir(), "out.go")
+	// Use model file as interface file (no interfaces in it)
 	app := New("1.0.0")
-	err := app.Run([]string{"structify", "--to-db-sql", "--output", tmp, fixture})
-	if err != nil {
-		t.Errorf("Run() --to-db-sql error = %v", err)
+	err := app.Run([]string{"structify", "--to-repo", "--model", modelFixture, "--interface", modelFixture})
+	if err == nil {
+		t.Error("Run() --to-repo with no interfaces should return error")
+	}
+}
+
+func TestAppRunToRepoModelParseError(t *testing.T) {
+	app := New("1.0.0")
+	err := app.Run([]string{"structify", "--to-repo", "--model", "nonexistent.go", "--interface", "nonexistent.go"})
+	if err == nil {
+		t.Error("Run() --to-repo with nonexistent model should return error")
 	}
 }
 
 func TestWriteOutputStdout(t *testing.T) {
 	app := New("1.0.0")
 	app.cmd.OutputFile = ""
-	err := app.writeOutput("test output")
+	err := app.writeOutput("test output", "")
 	if err != nil {
 		t.Errorf("writeOutput() error = %v", err)
 	}
@@ -132,7 +142,7 @@ func TestWriteOutputFile(t *testing.T) {
 	tmp := filepath.Join(t.TempDir(), "out.txt")
 	app := New("1.0.0")
 	app.cmd.OutputFile = tmp
-	err := app.writeOutput("hello world")
+	err := app.writeOutput("hello world", tmp)
 	if err != nil {
 		t.Errorf("writeOutput() error = %v", err)
 	}
@@ -144,6 +154,70 @@ func TestWriteOutputFile(t *testing.T) {
 
 func TestPrintUsage(t *testing.T) {
 	app := New("1.0.0")
-	// Should not panic
 	app.printUsage()
+}
+
+func TestAppRunToRepoInterfaceParseError(t *testing.T) {
+	modelFixture := "../../test/fixtures/user.go"
+	if _, err := os.Stat(modelFixture); os.IsNotExist(err) {
+		t.Skip("model fixture not found")
+	}
+
+	app := New("1.0.0")
+	err := app.Run([]string{"structify", "--to-repo", "--model", modelFixture, "--interface", "nonexistent.go"})
+	if err == nil {
+		t.Error("Run() --to-repo with nonexistent interface should return error")
+	}
+}
+
+func TestGetDefaultOutputFile(t *testing.T) {
+	tests := []struct {
+		name          string
+		interfaceFile string
+		expected      string
+	}{
+		{
+			name:          "simple path",
+			interfaceFile: "repo/user_repository.go",
+			expected:      "repo/user_repository.gen.go",
+		},
+		{
+			name:          "relative path with ./",
+			interfaceFile: "./repo/user_repository.go",
+			expected:      "./repo/user_repository.gen.go",
+		},
+		{
+			name:          "absolute path",
+			interfaceFile: "/abs/path/repo/user_repository.go",
+			expected:      "/abs/path/repo/user_repository.gen.go",
+		},
+		{
+			name:          "path with directory traversal",
+			interfaceFile: "../repo/user_repository.go",
+			expected:      "../repo/user_repository.gen.go",
+		},
+		{
+			name:          "Windows-style path",
+			interfaceFile: "repo\\user_repository.go",
+			expected:      "repo\\user_repository.gen.go",
+		},
+	}
+
+	app := New("1.0.0")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := app.getDefaultOutputFile(tt.interfaceFile)
+			if got != tt.expected {
+				t.Errorf("getDefaultOutputFile() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestAppRunInvalidFlag(t *testing.T) {
+	app := New("1.0.0")
+	err := app.Run([]string{"structify", "--invalid-flag"})
+	if err == nil {
+		t.Error("Run() with invalid flag should return error")
+	}
 }

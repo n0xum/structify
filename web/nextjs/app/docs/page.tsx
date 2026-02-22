@@ -1,15 +1,17 @@
 import Link from "next/link";
+import React from "react";
+import { HighlightedCode } from "@/components/HighlightedCode";
 
 export const metadata = {
   title: "Docs — structify",
-  description: "All structify db: tag features with Go examples and SQL output.",
+  description: "Learn how to use structify to generate database schemas and repository implementations from Go structs and interfaces.",
 };
 
 type Section = {
   id: string;
   title: string;
   exampleLabel: string;
-  description: string;
+  description: React.ReactNode;
   goCode: string;
   sqlCode: string;
 };
@@ -17,18 +19,21 @@ type Section = {
 const SECTIONS: Section[] = [
   {
     id: "basic",
-    title: "Basic",
+    title: "Basic Mapping",
     exampleLabel: "User",
-    description:
-      "Define a table by declaring a Go struct. Fields are mapped to columns using their Go type. Use db:\"pk\" for the primary key and db:\"unique\" for a UNIQUE constraint. Fields with no tag are plain nullable columns.",
+    description: (
+      <>
+        Define a table by declaring a Go struct. Fields are mapped to columns using their Go type. Use <code className="text-zinc-200 bg-zinc-800/50 px-1 py-0.5 rounded">db:&quot;pk&quot;</code> for the primary key and <code className="text-zinc-200 bg-zinc-800/50 px-1 py-0.5 rounded">db:&quot;unique&quot;</code> for a UNIQUE constraint. Fields with no tag are plain nullable columns.
+      </>
+    ),
     goCode: `package models
 
 type User struct {
-\tID       int64  \`db:"pk"\`
-\tUsername string \`db:"unique"\`
-\tEmail    string
-\tActive   bool
-\tCreated  int64
+	ID       int64  \`db:"pk"\`
+	Username string \`db:"unique"\`
+	Email    string
+	Active   bool
+	Created  int64
 }`,
     sqlCode: `CREATE TABLE users (
   id       BIGINT PRIMARY KEY,
@@ -42,17 +47,20 @@ type User struct {
     id: "constraints",
     title: "Constraints",
     exampleLabel: "Constraints",
-    description:
-      "Add column-level constraints inline. db:\"check:<expr>\" emits a CHECK constraint, db:\"default:<value>\" sets a DEFAULT, and db:\"enum:<a>,<b>,...\" generates an IN-list CHECK for allowed values.",
+    description: (
+      <>
+        Add column-level constraints inline. <code className="text-zinc-200 bg-zinc-800/50 px-1 py-0.5 rounded">db:&quot;check:&lt;expr&gt;&quot;</code> emits a CHECK constraint, <code className="text-zinc-200 bg-zinc-800/50 px-1 py-0.5 rounded">db:&quot;default:&lt;value&gt;&quot;</code> sets a DEFAULT, and <code className="text-zinc-200 bg-zinc-800/50 px-1 py-0.5 rounded">db:&quot;enum:&lt;a&gt;,&lt;b&gt;,...&quot;</code> generates an IN-list CHECK for allowed values.
+      </>
+    ),
     goCode: `package models
 
 type Person struct {
-\tID        int64  \`db:"pk"\`
-\tName      string \`db:"check:length(name) > 0"\`
-\tAge       int    \`db:"check:age >= 18,default:18"\`
-\tStatus    string \`db:"enum:active,inactive,banned"\`
-\tActive    bool   \`db:"default:true"\`
-\tCreatedAt int64  \`db:"default:now()"\`
+	ID        int64  \`db:"pk"\`
+	Name      string \`db:"check:length(name) > 0"\`
+	Age       int    \`db:"check:age >= 18,default:18"\`
+	Status    string \`db:"enum:active,inactive,banned"\`
+	Active    bool   \`db:"default:true"\`
+	CreatedAt int64  \`db:"default:now()"\`
 }`,
     sqlCode: `CREATE TABLE persons (
   id         BIGINT PRIMARY KEY,
@@ -67,16 +75,19 @@ type Person struct {
     id: "indexes",
     title: "Indexes",
     exampleLabel: "Indexes",
-    description:
-      "Create indexes with db:\"index\" or db:\"unique_index\". Give multiple fields the same named index to produce a composite index. Unnamed indexes get an auto-generated name.",
+    description: (
+      <>
+        Create indexes with <code className="text-zinc-200 bg-zinc-800/50 px-1 py-0.5 rounded">db:&quot;index&quot;</code> or <code className="text-zinc-200 bg-zinc-800/50 px-1 py-0.5 rounded">db:&quot;unique_index&quot;</code>. Give multiple fields the same named index to produce a composite index. Unnamed indexes get an auto-generated name.
+      </>
+    ),
     goCode: `package models
 
 type Article struct {
-\tID       int64  \`db:"pk"\`
-\tSlug     string \`db:"unique_index:uq_slug"\`
-\tTitle    string \`db:"index:idx_title_lang"\`
-\tLanguage string \`db:"index:idx_title_lang"\`
-\tViews    int64  \`db:"index"\`
+	ID       int64  \`db:"pk"\`
+	Slug     string \`db:"unique_index:uq_slug"\`
+	Title    string \`db:"index:idx_title_lang"\`
+	Language string \`db:"index:idx_title_lang"\`
+	Views    int64  \`db:"index"\`
 }`,
     sqlCode: `CREATE TABLE articles (
   id       BIGINT PRIMARY KEY,
@@ -94,20 +105,23 @@ CREATE INDEX idx_articles_views ON articles (views);`,
     id: "foreign-keys",
     title: "Foreign Keys",
     exampleLabel: "Foreign Keys",
-    description:
-      "Reference another table with db:\"fk:<table>,<col>\". Add on_delete:CASCADE (or SET NULL / RESTRICT) to control cascading behaviour. The constraint name is generated automatically.",
+    description: (
+      <>
+        Reference another table with <code className="text-zinc-200 bg-zinc-800/50 px-1 py-0.5 rounded">db:&quot;fk:&lt;table&gt;,&lt;col&gt;&quot;</code>. Add <code className="text-zinc-200 bg-zinc-800/50 px-1 py-0.5 rounded">on_delete:CASCADE</code> (or SET NULL / RESTRICT) to control cascading behaviour. The constraint name is generated automatically.
+      </>
+    ),
     goCode: `package models
 
 type User struct {
-\tID    int64  \`db:"pk"\`
-\tEmail string \`db:"unique"\`
+	ID    int64  \`db:"pk"\`
+	Email string \`db:"unique"\`
 }
 
 type Post struct {
-\tID      int64  \`db:"pk"\`
-\tUserID  int64  \`db:"fk:users,id,on_delete:CASCADE"\`
-\tTitle   string
-\tContent string
+	ID      int64  \`db:"pk"\`
+	UserID  int64  \`db:"fk:users,id,on_delete:CASCADE"\`
+	Title   string
+	Content string
 }`,
     sqlCode: `CREATE TABLE users (
   id    BIGINT PRIMARY KEY,
@@ -124,125 +138,198 @@ CREATE TABLE posts (
 );`,
   },
   {
-    id: "composite-keys",
-    title: "Composite Keys",
-    exampleLabel: "Composite PK & FK",
-    description:
-      "Mark multiple fields with db:\"pk\" to form a composite primary key. For composite foreign keys, give them the same constraint name as the first tag segment: db:\"fk:<name>,<table>,<col>\".",
+    id: "repo-generation",
+    title: "Repository Generation",
+    exampleLabel: "Indexes",
+    description: (
+      <>
+        With the new <code className="text-zinc-200 bg-zinc-800/50 px-1 py-0.5 rounded text-sm tracking-wide">--to-repo</code> command, structify can generate clean, robust Go code that implements a <code className="text-zinc-200 font-medium">Repository Interface</code>. Just provide your model and its corresponding interface, and structify handles the SQL generation and mapping.
+      </>
+    ),
     goCode: `package models
 
-type OrderItem struct {
-\tOrderID   int64 \`db:"pk"\`
-\tProductID int64 \`db:"pk"\`
-\tQuantity  int
-\tPrice     float64
+import "context"
+
+type Article struct {
+	ID       int64  \`db:"pk"\`
+	Slug     string \`db:"unique"\`
+	Title    string
+	Language string
 }
 
-type OrderItemNote struct {
-\tNoteID    int64  \`db:"pk"\`
-\tOrderID   int64  \`db:"fk:fk_oi,order_items,order_id,on_delete:CASCADE"\`
-\tProductID int64  \`db:"fk:fk_oi,order_items,product_id"\`
-\tNote      string
+// Generate implementation with structify --to-repo
+type ArticleRepository interface {
+	FindByID(ctx context.Context, id int64) (*Article, error)
+	FindBySlug(ctx context.Context, slug string) (*Article, error)
+	FindByTitleAndLanguage(ctx context.Context, title string, language string) ([]*Article, error)
+	Create(ctx context.Context, article *Article) error
 }`,
-    sqlCode: `CREATE TABLE order_items (
-  order_id   BIGINT NOT NULL,
-  product_id BIGINT NOT NULL,
-  quantity   INTEGER NOT NULL,
-  price      DOUBLE PRECISION NOT NULL,
-  PRIMARY KEY (order_id, product_id)
-);
+    sqlCode: `// Generated snippet
+func (r *articleRepository) FindByTitleAndLanguage(ctx context.Context, title string, language string) ([]*models.Article, error) {
+	query := "SELECT id, slug, title, language FROM articles WHERE title = $1 AND language = $2"
+	rows, err := r.db.QueryContext(ctx, query, title, language)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
-CREATE TABLE order_item_notes (
-  note_id    BIGINT PRIMARY KEY,
-  order_id   BIGINT NOT NULL,
-  product_id BIGINT NOT NULL,
-  note       TEXT NOT NULL,
-  CONSTRAINT fk_oi FOREIGN KEY (order_id, product_id)
-    REFERENCES order_items (order_id, product_id) ON DELETE CASCADE
-);`,
+	var results []*models.Article
+	for rows.Next() {
+		var item models.Article
+		if err := rows.Scan(&item.ID, &item.Slug, &item.Title, &item.Language); err != nil {
+			return nil, err
+		}
+		results = append(results, &item)
+	}
+	return results, rows.Err()
+}`,
   },
 ];
 
 const NAV_LINKS = SECTIONS.map((s) => ({ id: s.id, title: s.title }));
 
-function CodeBlock({ label, code }: { label: string; code: string }) {
+function CodeBlock({ label, code, isGo }: { label: string; code: string; isGo?: boolean }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <span className="text-xs font-medium text-zinc-500 uppercase tracking-widest">
-        {label}
-      </span>
-      <pre className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 overflow-x-auto">
-        <code className="font-mono text-sm text-zinc-300 whitespace-pre">{code}</code>
-      </pre>
+    <div className="flex flex-col h-full rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-900/50 backdrop-blur-xl shadow-2xl transition-all duration-500 hover:border-zinc-700">
+      <div className="flex items-center px-4 py-3 border-b border-zinc-800 bg-zinc-800/20">
+        <div className="flex gap-1.5 mr-4 opacity-50 grayscale">
+          <div className="w-3 h-3 rounded-full bg-zinc-500 border border-zinc-400/50" />
+          <div className="w-3 h-3 rounded-full bg-zinc-500 border border-zinc-400/50" />
+          <div className="w-3 h-3 rounded-full bg-zinc-500 border border-zinc-400/50" />
+        </div>
+        <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">
+          {label}
+        </span>
+      </div>
+      <div className="p-4 overflow-x-auto flex-1 text-sm font-mono leading-relaxed">
+        <HighlightedCode code={code} language={isGo ? "go" : "sql"} />
+      </div>
     </div>
   );
 }
 
 export default function DocsPage() {
   return (
-    <div className="flex min-h-screen bg-zinc-950 text-zinc-100">
-      {/* Sidebar — desktop only */}
-      <aside className="hidden md:flex flex-col sticky top-0 h-screen w-52 border-r border-zinc-800 py-8 px-4 gap-1 shrink-0">
-        <Link
-          href="/"
-          className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors mb-6 font-mono"
-        >
-          ← structify
-        </Link>
-        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-2">
-          Features
-        </p>
-        {NAV_LINKS.map((link) => (
-          <a
-            key={link.id}
-            href={`#${link.id}`}
-            className="text-sm text-zinc-400 hover:text-zinc-100 transition-colors py-1 rounded"
-          >
-            {link.title}
-          </a>
-        ))}
-      </aside>
+    <div className="min-h-screen bg-[#050505] text-zinc-100 selection:bg-zinc-500/30 font-sans relative">
+      {/* Background ambient lights (now grayscale) */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-zinc-800/10 blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-zinc-800/10 blur-[120px]" />
+      </div>
 
-      {/* Content */}
-      <div className="flex flex-col flex-1 min-w-0 px-4 py-8 md:px-10 max-w-5xl">
-        {/* Mobile header */}
-        <div className="flex items-center gap-3 md:hidden mb-8">
+      <div className="flex max-w-[1400px] mx-auto min-h-screen relative z-10">
+        {/* Sidebar */}
+        <aside className="hidden lg:flex flex-col sticky top-0 h-screen w-64 border-r border-white/5 py-12 px-8 shrink-0 bg-black/20 backdrop-blur-3xl">
           <Link
             href="/"
-            className="text-sm text-zinc-400 hover:text-zinc-200 transition-colors font-mono"
+            className="group flex items-center gap-2 text-sm font-medium text-zinc-400 hover:text-white transition-colors mb-12"
           >
-            ← structify
+            <span className="group-hover:-translate-x-1 transition-transform inline-block">&larr;</span> Back to Editor
           </Link>
-        </div>
 
-        <h1 className="text-2xl font-bold text-zinc-100 mb-2">Docs</h1>
-        <p className="text-zinc-400 text-sm mb-10">
-          All <code className="font-mono text-sky-400">db:</code> tag features with Go input and SQL
-          output.
-        </p>
+          <div className="mb-4">
+            <div className="text-xs font-bold text-zinc-300 uppercase tracking-[0.2em]">
+              Documentation
+            </div>
+          </div>
 
-        <div className="flex flex-col gap-16">
-          {SECTIONS.map((section) => (
-            <section key={section.id} id={section.id} className="scroll-mt-8">
-              <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
-                <h2 className="text-lg font-semibold text-zinc-100">{section.title}</h2>
-                <Link
-                  href={`/?load=${encodeURIComponent(section.exampleLabel)}`}
-                  className="text-sm px-3 py-1.5 rounded-md bg-sky-700 hover:bg-sky-600 text-white transition-colors font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
-                >
-                  Try it →
-                </Link>
-              </div>
-              <p className="text-zinc-400 text-sm mb-5">{section.description}</p>
+          <nav className="flex flex-col gap-1">
+            {NAV_LINKS.map((link) => (
+              <a
+                key={link.id}
+                href={`#${link.id}`}
+                className="text-sm text-zinc-500 hover:text-zinc-200 transition-all duration-300 py-2 rounded-lg hover:bg-white/5 hover:px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500"
+              >
+                {link.title}
+              </a>
+            ))}
+          </nav>
+        </aside>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <CodeBlock label="Go" code={section.goCode} />
-                <CodeBlock label="SQL" code={section.sqlCode} />
-              </div>
-            </section>
-          ))}
-        </div>
-      </div>
-    </div>
+        {/* Main Content */}
+        <main className="flex-1 min-w-0 px-6 py-12 lg:py-20 lg:px-20">
+          <div className="max-w-4xl mx-auto">
+            {/* Mobile Nav */}
+            <div className="lg:hidden mb-10">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 text-sm font-medium text-zinc-400 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-full border border-white/5 backdrop-blur-md"
+              >
+                &larr; Back to Editor
+              </Link>
+            </div>
+
+            <header className="mb-20">
+              <h1 className="text-5xl font-extrabold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
+                Docs & Features
+              </h1>
+              <p className="text-lg text-zinc-400 leading-relaxed max-w-2xl">
+                Explore how structify transforms simple Go structs into powerful PostgreSQL schemas and safe repository implementations.
+              </p>
+            </header>
+
+            <div className="flex flex-col gap-32">
+              {SECTIONS.map((section, idx) => (
+                <section key={section.id} id={section.id} className="scroll-mt-32 group">
+                  <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8">
+                    <div className="max-w-xl">
+                      <div className="flex items-center gap-4 mb-4">
+                        <span className="flex items-center justify-center w-8 h-8 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-zinc-400 shadow-inner">
+                          0{idx + 1}
+                        </span>
+                        <h2 className="text-2xl font-bold tracking-tight text-zinc-100">{section.title}</h2>
+                      </div>
+                      <p className="text-base text-zinc-400 leading-relaxed">
+                        {section.description}
+                      </p>
+                    </div>
+                    {section.id !== "repo-generation" && (
+                      <Link
+                        href={`/?load=${encodeURIComponent(section.exampleLabel)}&mode=sql`}
+                        className="inline-flex items-center justify-center gap-2 text-sm px-5 py-2.5 rounded-full bg-zinc-800/50 hover:bg-zinc-800 text-zinc-200 transition-all border border-zinc-700/50 hover:border-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-zinc-400 font-medium whitespace-nowrap"
+                      >
+                        Try Example <span aria-hidden="true">&rarr;</span>
+                      </Link>
+                    )}
+                    {section.id === "repo-generation" && (
+                      <Link
+                        href={`/?load=${encodeURIComponent(section.exampleLabel)}&mode=code`}
+                        className="inline-flex items-center justify-center gap-2 text-sm px-5 py-2.5 rounded-full bg-zinc-100 hover:bg-white text-zinc-950 transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-zinc-400 font-medium whitespace-nowrap shadow-sm"
+                      >
+                        Try Code Gen <span aria-hidden="true">&rarr;</span>
+                      </Link>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 relative">
+                    <div className="absolute inset-0 bg-zinc-800/5 blur-3xl -z-10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                    <div className="w-full">
+                      <CodeBlock label="Source (Go)" code={section.goCode} isGo={true} />
+                    </div>
+                    <div className="w-full">
+                      <CodeBlock label={section.id === "repo-generation" ? "Output (Go)" : "Output (SQL)"} code={section.sqlCode} />
+                    </div>
+                  </div>
+                </section>
+              ))}
+            </div>
+
+            <footer className="mt-32 pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
+              <p className="text-sm text-zinc-500">
+                structify — Go structs to PostgreSQL, instantly.
+              </p>
+              <a
+                href="https://github.com/n0xum/structify"
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm text-zinc-400 hover:text-white transition-colors"
+              >
+                GitHub Repository
+              </a>
+            </footer>
+          </div >
+        </main >
+      </div >
+    </div >
   );
 }

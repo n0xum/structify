@@ -7,8 +7,8 @@ package integration
 
 // BlogPost tests: pk, unique, ignored field, custom table name
 type BlogPost struct {
-	ID        int64   `db:"pk"`
-	Slug      string  `db:"unique"`
+	ID        int64  `db:"pk"`
+	Slug      string `db:"unique"`
 	Title     string
 	Body      string
 	Published bool
@@ -17,7 +17,7 @@ type BlogPost struct {
 
 // OrderItem tests: composite fields, float types, pointer-like naming
 type OrderItem struct {
-	ID        int64   `db:"pk"`
+	ID        int64 `db:"pk"`
 	OrderID   int64
 	ProductID int64
 	Quantity  int32

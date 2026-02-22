@@ -72,21 +72,48 @@ func TestEntityValidate(t *testing.T) {
 }
 
 func TestEntityGetPrimaryKeyField(t *testing.T) {
-	entity := &Entity{
-		Name: "User",
-		Fields: []Field{
-			{Name: "ID", Type: "int64", IsPrimary: true},
-			{Name: "Name", Type: "string"},
-		},
-	}
+	t.Run("single primary key", func(t *testing.T) {
+		entity := &Entity{
+			Name: "User",
+			Fields: []Field{
+				{Name: "ID", Type: "int64", IsPrimary: true},
+				{Name: "Name", Type: "string"},
+			},
+		}
 
-	pk := entity.GetPrimaryKeyField()
-	if pk == nil {
-		t.Fatal("GetPrimaryKeyField() returned nil")
-	}
-	if pk.Name != "ID" {
-		t.Errorf("GetPrimaryKeyField() Name = %v, want ID", pk.Name)
-	}
+		pk := entity.GetPrimaryKeyField()
+		if pk == nil {
+			t.Fatal("GetPrimaryKeyField() returned nil")
+		}
+		if pk.Name != "ID" {
+			t.Errorf("GetPrimaryKeyField() Name = %v, want ID", pk.Name)
+		}
+	})
+
+	t.Run("no primary key returns nil", func(t *testing.T) {
+		entity := &Entity{
+			Name: "Log",
+			Fields: []Field{
+				{Name: "Message", Type: "string"},
+			},
+		}
+		if pk := entity.GetPrimaryKeyField(); pk != nil {
+			t.Errorf("GetPrimaryKeyField() = %v, want nil", pk)
+		}
+	})
+
+	t.Run("composite primary key returns nil", func(t *testing.T) {
+		entity := &Entity{
+			Name: "OrderItem",
+			Fields: []Field{
+				{Name: "OrderID", Type: "int64", IsPrimary: true},
+				{Name: "ItemID", Type: "int64", IsPrimary: true},
+			},
+		}
+		if pk := entity.GetPrimaryKeyField(); pk != nil {
+			t.Errorf("GetPrimaryKeyField() = %v, want nil for composite PK", pk)
+		}
+	})
 }
 
 func TestEntityHasPrimaryKey(t *testing.T) {
@@ -133,27 +160,27 @@ func TestEntityGetGenerateableFields(t *testing.T) {
 
 func TestEntityGetTableName(t *testing.T) {
 	tests := []struct {
-		name         string
-		tableName    string
-		entityName   string
+		name          string
+		tableName     string
+		entityName    string
 		wantTableName string
 	}{
 		{
-			name:         "custom table name",
-			tableName:    "users",
-			entityName:   "User",
+			name:          "custom table name",
+			tableName:     "users",
+			entityName:    "User",
 			wantTableName: "users",
 		},
 		{
-			name:         "default table name",
-			tableName:    "",
-			entityName:   "User",
+			name:          "default table name",
+			tableName:     "",
+			entityName:    "User",
 			wantTableName: "user",
 		},
 		{
-			name:         "camel case to snake",
-			tableName:    "",
-			entityName:   "UserProfile",
+			name:          "camel case to snake",
+			tableName:     "",
+			entityName:    "UserProfile",
 			wantTableName: "user_profile",
 		},
 	}
@@ -174,24 +201,24 @@ func TestEntityGetTableName(t *testing.T) {
 
 func TestFieldShouldGenerate(t *testing.T) {
 	tests := []struct {
-		name string
+		name  string
 		field Field
-		want bool
+		want  bool
 	}{
 		{
-			name: "normal field",
+			name:  "normal field",
 			field: Field{Name: "ID", Type: "int64"},
-			want: true,
+			want:  true,
 		},
 		{
-			name: "ignored field",
+			name:  "ignored field",
 			field: Field{Name: "Secret", Type: "string", IsIgnored: true},
-			want: false,
+			want:  false,
 		},
 		{
-			name: "empty type",
+			name:  "empty type",
 			field: Field{Name: "Unknown", Type: ""},
-			want: false,
+			want:  false,
 		},
 	}
 
@@ -206,9 +233,9 @@ func TestFieldShouldGenerate(t *testing.T) {
 
 func TestEntityHasCompositePrimaryKey(t *testing.T) {
 	tests := []struct {
-		name string
+		name   string
 		entity *Entity
-		want bool
+		want   bool
 	}{
 		{
 			name: "single primary key",
@@ -266,10 +293,10 @@ func TestEntityHasCompositePrimaryKey(t *testing.T) {
 
 func TestEntityGetUniqueConstraints(t *testing.T) {
 	tests := []struct {
-		name string
-		entity *Entity
+		name                string
+		entity              *Entity
 		wantConstraintCount int
-		wantCompositeCount int
+		wantCompositeCount  int
 	}{
 		{
 			name: "no unique constraints",
@@ -280,7 +307,7 @@ func TestEntityGetUniqueConstraints(t *testing.T) {
 				},
 			},
 			wantConstraintCount: 0,
-			wantCompositeCount: 0,
+			wantCompositeCount:  0,
 		},
 		{
 			name: "single unique constraint",
@@ -292,7 +319,7 @@ func TestEntityGetUniqueConstraints(t *testing.T) {
 				},
 			},
 			wantConstraintCount: 1,
-			wantCompositeCount: 0,
+			wantCompositeCount:  0,
 		},
 		{
 			name: "composite unique constraint",
@@ -305,7 +332,7 @@ func TestEntityGetUniqueConstraints(t *testing.T) {
 				},
 			},
 			wantConstraintCount: 1,
-			wantCompositeCount: 1,
+			wantCompositeCount:  1,
 		},
 		{
 			name: "multiple composite unique constraints",
@@ -321,7 +348,7 @@ func TestEntityGetUniqueConstraints(t *testing.T) {
 				},
 			},
 			wantConstraintCount: 3,
-			wantCompositeCount: 2,
+			wantCompositeCount:  2,
 		},
 	}
 
@@ -347,9 +374,9 @@ func TestEntityGetUniqueConstraints(t *testing.T) {
 
 func TestEntityHasCompositeUniqueConstraints(t *testing.T) {
 	tests := []struct {
-		name string
+		name   string
 		entity *Entity
-		want bool
+		want   bool
 	}{
 		{
 			name: "no unique constraints",
@@ -410,8 +437,8 @@ func TestEntityHasCompositeUniqueConstraints(t *testing.T) {
 
 func TestEntityGetPrimaryKeyFields(t *testing.T) {
 	tests := []struct {
-		name string
-		entity *Entity
+		name      string
+		entity    *Entity
 		wantCount int
 	}{
 		{
