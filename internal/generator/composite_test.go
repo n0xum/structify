@@ -99,3 +99,141 @@ func findSubstring(s, substr string) bool {
 	}
 	return false
 }
+
+func TestCompositeGeneratorGenerateRepository(t *testing.T) {
+	t.Run("valid entity and interface", func(t *testing.T) {
+		gen := NewCompositeGenerator()
+		ctx := context.Background()
+
+		ent := &entity.Entity{
+			Name: "User",
+			Fields: []entity.Field{
+				{Name: "ID", Type: "int64", IsPrimary: true},
+				{Name: "Username", Type: "string"},
+			},
+		}
+
+		repo := &entity.RepositoryInterface{
+			Name:       "UserRepository",
+			EntityName: "User",
+			Package:    "repository",
+			Methods: []entity.RepositoryMethod{
+				{Name: "GetByID", Kind: entity.MethodGetByID},
+				{Name: "Create", Kind: entity.MethodCreate},
+			},
+		}
+
+		result, err := gen.GenerateRepository(ctx, "repository", ent, repo)
+		if err != nil {
+			t.Fatalf("GenerateRepository() error = %v", err)
+		}
+
+		if result == "" {
+			t.Error("GenerateRepository() returned empty string")
+		}
+
+		if !contains(result, "package repository") {
+			t.Error("GenerateRepository() missing package declaration")
+		}
+
+		if !contains(result, "type UserRepositoryImpl struct") {
+			t.Error("GenerateRepository() missing impl struct")
+		}
+
+		if !contains(result, "func NewUserRepository") {
+			t.Error("GenerateRepository() missing constructor")
+		}
+
+		if !contains(result, "func (r *UserRepositoryImpl)") {
+			t.Error("GenerateRepository() missing receiver methods")
+		}
+	})
+
+	t.Run("empty package name uses main", func(t *testing.T) {
+		gen := NewCompositeGenerator()
+		ctx := context.Background()
+
+		ent := &entity.Entity{
+			Name: "User",
+			Fields: []entity.Field{
+				{Name: "ID", Type: "int64", IsPrimary: true},
+			},
+		}
+
+		repo := &entity.RepositoryInterface{
+			Name:       "UserRepository",
+			EntityName: "User",
+			Package:    "repository",
+			Methods:    []entity.RepositoryMethod{},
+		}
+
+		result, err := gen.GenerateRepository(ctx, "", ent, repo)
+		if err != nil {
+			t.Fatalf("GenerateRepository() error = %v", err)
+		}
+
+		if !contains(result, "package main") {
+			t.Error("GenerateRepository() should use 'main' package when empty")
+		}
+	})
+
+	t.Run("all method kinds", func(t *testing.T) {
+		gen := NewCompositeGenerator()
+		ctx := context.Background()
+
+		ent := &entity.Entity{
+			Name: "Product",
+			Fields: []entity.Field{
+				{Name: "ID", Type: "int64", IsPrimary: true},
+				{Name: "Name", Type: "string"},
+				{Name: "Price", Type: "float64"},
+			},
+		}
+
+		repo := &entity.RepositoryInterface{
+			Name:       "ProductRepository",
+			EntityName: "Product",
+			Package:    "repository",
+			Methods: []entity.RepositoryMethod{
+				{Name: "Create", Kind: entity.MethodCreate},
+				{Name: "GetByID", Kind: entity.MethodGetByID},
+				{Name: "Update", Kind: entity.MethodUpdate},
+				{Name: "Delete", Kind: entity.MethodDelete},
+				{Name: "List", Kind: entity.MethodList},
+				{Name: "FindByName", Kind: entity.MethodFindBy},
+				{Name: "CustomQuery", Kind: entity.MethodCustomSQL, CustomSQL: "SELECT * FROM products WHERE price > $1"},
+			},
+		}
+
+		result, err := gen.GenerateRepository(ctx, "repo", ent, repo)
+		if err != nil {
+			t.Fatalf("GenerateRepository() error = %v", err)
+		}
+
+		// Verify all method types are generated
+		if !contains(result, "func (r *ProductRepositoryImpl) Create") {
+			t.Error("GenerateRepository() missing Create method")
+		}
+		if !contains(result, "func (r *ProductRepositoryImpl) GetByID") {
+			t.Error("GenerateRepository() missing GetByID method")
+		}
+		if !contains(result, "func (r *ProductRepositoryImpl) Update") {
+			t.Error("GenerateRepository() missing Update method")
+		}
+		if !contains(result, "func (r *ProductRepositoryImpl) Delete") {
+			t.Error("GenerateRepository() missing Delete method")
+		}
+		if !contains(result, "func (r *ProductRepositoryImpl) List") {
+			t.Error("GenerateRepository() missing List method")
+		}
+		if !contains(result, "func (r *ProductRepositoryImpl) FindByName") {
+			t.Error("GenerateRepository() missing FindByName method")
+		}
+		if !contains(result, "func (r *ProductRepositoryImpl) CustomQuery") {
+			t.Error("GenerateRepository() missing CustomQuery method")
+		}
+		if !contains(result, "SELECT * FROM products WHERE price > $1") {
+			t.Error("GenerateRepository() missing custom SQL")
+		}
+	})
+}

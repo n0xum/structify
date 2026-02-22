@@ -2,6 +2,8 @@ package entity
 
 import (
 	"errors"
+
+	"github.com/n0xum/structify/internal/util"
 )
 
 var ErrInvalidEntity = errors.New("invalid entity")
@@ -122,5 +124,11 @@ func (e *Entity) GetTableName() string {
 	if e.TableName != "" {
 		return e.TableName
 	}
-	return ToSnakeCase(e.Name)
+	return util.ToSnakeCase(e.Name)
+}
+
+// GetQuotedTableName returns the table name wrapped in double quotes so that
+// PostgreSQL reserved words (e.g. "order", "user") are always safe to use in DML.
+func (e *Entity) GetQuotedTableName() string {
+	return `"` + e.GetTableName() + `"`
 }

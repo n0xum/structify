@@ -16,11 +16,24 @@ import { EXAMPLES } from "@/lib/examples";
 const STORAGE_KEY = "structify_input";
 const DEFAULT_PLACEHOLDER = `package models
 
+import "context"
+
 type User struct {
-\tID       int64  \`db:"pk"\`
-\tUsername string \`db:"unique"\`
-\tEmail    string
-\tActive   bool
+	ID       int64  \`db:"pk"\`
+	Username string \`db:"unique"\`
+	Email    string
+	Active   bool
+	Created  int64
+}
+
+// UserRepository defines the methods to access User data.
+// Structify will generate the implementation for this interface.
+type UserRepository interface {
+	FindByID(ctx context.Context, id int64) (*User, error)
+	FindByUsername(ctx context.Context, username string) (*User, error)
+	Create(ctx context.Context, user *User) error
+	Update(ctx context.Context, user *User) error
+	Delete(ctx context.Context, id int64) error
 }`;
 
 export function StructifyApp() {
@@ -67,7 +80,7 @@ export function StructifyApp() {
     params.delete("load");
     const newSearch = params.toString();
     router.replace(newSearch ? `?${newSearch}` : "/", { scroll: false });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Persist input to localStorage
@@ -183,7 +196,7 @@ export function StructifyApp() {
             <ExampleLoader onSelect={handleExampleSelect} />
             <Link
               href="/docs"
-              className="text-zinc-400 hover:text-zinc-200 transition-colors text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 rounded"
+              className="text-zinc-400 hover:text-zinc-200 transition-colors text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-zinc-400 rounded"
             >
               Docs
             </Link>
@@ -192,7 +205,7 @@ export function StructifyApp() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="GitHub repository"
-              className="text-zinc-400 hover:text-zinc-200 transition-colors text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 rounded"
+              className="text-zinc-400 hover:text-zinc-200 transition-colors text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-zinc-400 rounded"
             >
               GitHub
             </a>
@@ -230,7 +243,7 @@ export function StructifyApp() {
             {warnings.length > 0 && (
               <ul className="flex flex-col gap-1" aria-describedby="input-editor">
                 {warnings.map((w) => (
-                  <li key={w} className="text-xs text-yellow-500">
+                  <li key={w} className="text-xs text-zinc-400">
                     {w}
                   </li>
                 ))}
@@ -240,7 +253,7 @@ export function StructifyApp() {
             {/* Error */}
             {error && (
               <p
-                className="text-xs text-red-400 bg-red-950/40 border border-red-800 rounded-md px-3 py-2"
+                className="text-xs text-zinc-300 bg-zinc-900 border border-zinc-800 rounded-md px-3 py-2"
                 role="alert"
                 aria-live="polite"
               >
@@ -261,7 +274,7 @@ export function StructifyApp() {
                 onClick={() => handleGenerate()}
                 disabled={!canGenerate}
                 aria-label="Generate output (Ctrl+Enter)"
-                className="w-full py-2.5 rounded-lg bg-sky-600 text-white text-sm font-semibold transition-colors hover:bg-sky-500 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
+                className="w-full py-2.5 rounded-lg bg-zinc-100 text-zinc-950 text-sm font-semibold transition-colors hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-zinc-400 shadow-sm"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">

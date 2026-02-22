@@ -12,7 +12,7 @@ export function TagReference() {
         onClick={() => setOpen((o) => !o)}
         aria-label="Show db tag reference"
         aria-expanded={open}
-        className="flex items-center justify-center w-6 h-6 rounded-full border border-zinc-600 text-zinc-400 hover:text-zinc-200 hover:border-zinc-400 text-xs transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500"
+        className="flex items-center justify-center w-6 h-6 rounded-full border border-zinc-600 text-zinc-400 hover:text-zinc-200 hover:border-zinc-400 text-xs transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-zinc-400"
       >
         ?
       </button>

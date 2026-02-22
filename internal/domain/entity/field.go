@@ -8,12 +8,12 @@ type FKReference struct {
 }
 
 type Field struct {
-	Name       string
-	Type       string
-	IsPrimary  bool
-	IsUnique   bool
-	IsIgnored  bool
-	TableName  string
+	Name      string
+	Type      string
+	IsPrimary bool
+	IsUnique  bool
+	IsIgnored bool
+	TableName string
 
 	// CheckExpr stores the expression for CHECK constraint
 	// Parsed from db:"check:expression" tag

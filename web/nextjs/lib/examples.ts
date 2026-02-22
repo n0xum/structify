@@ -7,28 +7,47 @@ export type Example = {
 export const EXAMPLES: Example[] = [
   {
     label: "User",
-    description: "pk, unique, basic types",
+    description: "pk, unique, basic repo",
     source: `package models
 
+import "context"
+
 type User struct {
-\tID       int64  \`db:"pk"\`
-\tUsername string \`db:"unique"\`
-\tEmail    string
-\tActive   bool
-\tCreated  int64
+	ID       int64  \`db:"pk"\`
+	Username string \`db:"unique"\`
+	Email    string
+	Active   bool
+	Created  int64
+}
+
+type UserRepository interface {
+	FindByID(ctx context.Context, id int64) (*User, error)
+	FindByEmail(ctx context.Context, email string) (*User, error)
+	Create(ctx context.Context, user *User) error
+	Update(ctx context.Context, user *User) error
+	Delete(ctx context.Context, id int64) error
 }`,
   },
   {
     label: "Product",
-    description: "pk, ignored field",
+    description: "pk, ignored field, basic repo",
     source: `package models
 
+import "context"
+
 type Product struct {
-\tID          int64   \`db:"pk"\`
-\tName        string
-\tPrice       float64
-\tDescription string
-\tInStock     bool    \`db:"-"\`
+	ID          int64   \`db:"pk"\`
+	Name        string
+	Price       float64
+	Description string
+	InStock     bool    \`db:"-"\`
+}
+
+type ProductRepository interface {
+	FindByID(ctx context.Context, id int64) (*Product, error)
+	FindAll(ctx context.Context) ([]*Product, error)
+	Create(ctx context.Context, p *Product) error
+	Delete(ctx context.Context, id int64) error
 }`,
   },
   {
@@ -61,15 +80,23 @@ type Person struct {
   },
   {
     label: "Indexes",
-    description: "index, unique_index, composite index",
+    description: "index, unique_index, composite index, search repo",
     source: `package models
 
+import "context"
+
 type Article struct {
-\tID       int64  \`db:"pk"\`
-\tSlug     string \`db:"unique_index:uq_slug"\`
-\tTitle    string \`db:"index:idx_title_lang"\`
-\tLanguage string \`db:"index:idx_title_lang"\`
-\tViews    int64  \`db:"index"\`
+	ID       int64  \`db:"pk"\`
+	Slug     string \`db:"unique_index:uq_slug"\`
+	Title    string \`db:"index:idx_title_lang"\`
+	Language string \`db:"index:idx_title_lang"\`
+	Views    int64  \`db:"index"\`
+}
+
+type ArticleRepository interface {
+	FindBySlug(ctx context.Context, slug string) (*Article, error)
+	FindByTitleAndLanguage(ctx context.Context, title string, language string) ([]*Article, error)
+	FindByViewsGreaterThan(ctx context.Context, views int64) ([]*Article, error)
 }`,
   },
   {

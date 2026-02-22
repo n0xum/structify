@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/lib/pq"
 	"github.com/n0xum/structify/internal/domain/entity"
 	"github.com/n0xum/structify/internal/mapper"
-	"github.com/lib/pq"
+	"github.com/n0xum/structify/internal/util"
 )
 
 type SchemaGenerator struct {
@@ -66,7 +67,7 @@ func (g *SchemaGenerator) generateTable(ent *entity.Entity, tableName string) st
 		var pkColumns []string
 		for _, field := range pkFields {
 			if field.ShouldGenerate() {
-				pkColumns = append(pkColumns, pq.QuoteIdentifier(entity.ToSnakeCase(field.Name)))
+				pkColumns = append(pkColumns, pq.QuoteIdentifier(util.ToSnakeCase(field.Name)))
 			}
 		}
 		if len(pkColumns) > 1 {
@@ -89,7 +90,7 @@ func (g *SchemaGenerator) generateTable(ent *entity.Entity, tableName string) st
 		var uniqueColumns []string
 		for _, field := range fields {
 			if field.ShouldGenerate() {
-				uniqueColumns = append(uniqueColumns, pq.QuoteIdentifier(entity.ToSnakeCase(field.Name)))
+				uniqueColumns = append(uniqueColumns, pq.QuoteIdentifier(util.ToSnakeCase(field.Name)))
 			}
 		}
 		if len(uniqueColumns) > 1 {
@@ -130,7 +131,7 @@ func (g *SchemaGenerator) generateTable(ent *entity.Entity, tableName string) st
 			if !field.ShouldGenerate() || field.FKReference == nil {
 				continue
 			}
-			localColumns = append(localColumns, pq.QuoteIdentifier(entity.ToSnakeCase(field.Name)))
+			localColumns = append(localColumns, pq.QuoteIdentifier(util.ToSnakeCase(field.Name)))
 			refColumns = append(refColumns, pq.QuoteIdentifier(field.FKReference.Column))
 			if refTable == "" {
 				refTable = field.FKReference.Table
@@ -214,7 +215,7 @@ func (g *SchemaGenerator) generateColumn(ent *entity.Entity, field entity.Field)
 		for i, val := range field.EnumValues {
 			enumList[i] = fmt.Sprintf("'%s'", val)
 		}
-		columnName := pq.QuoteIdentifier(entity.ToSnakeCase(field.Name))
+		columnName := pq.QuoteIdentifier(util.ToSnakeCase(field.Name))
 		columnDef += fmt.Sprintf(" CHECK (%s IN (%s))", columnName, strings.Join(enumList, ", "))
 	}
 
@@ -240,7 +241,7 @@ func (g *SchemaGenerator) generateColumn(ent *entity.Entity, field entity.Field)
 		}
 	}
 
-	return pq.QuoteIdentifier(entity.ToSnakeCase(field.Name)) + " " + columnDef
+	return pq.QuoteIdentifier(util.ToSnakeCase(field.Name)) + " " + columnDef
 }
 
 // formatCascadeAction formats a cascade action (converts underscores to spaces)
@@ -285,7 +286,7 @@ func (g *SchemaGenerator) generateIndexes(ent *entity.Entity, tableName string) 
 		// Build column list
 		columns := make([]string, len(fields))
 		for i, field := range fields {
-			columns[i] = pq.QuoteIdentifier(entity.ToSnakeCase(field.Name))
+			columns[i] = pq.QuoteIdentifier(util.ToSnakeCase(field.Name))
 		}
 
 		// Check if this is a unique index

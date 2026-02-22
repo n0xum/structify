@@ -7,6 +7,7 @@ import (
 
 	"github.com/n0xum/structify/internal/domain/entity"
 	"github.com/n0xum/structify/internal/mapper"
+	"github.com/n0xum/structify/internal/util"
 )
 
 type RepositoryGenerator struct {
@@ -90,7 +91,7 @@ func (g *RepositoryGenerator) generateCreateMethod(sb *strings.Builder, ent *ent
 		if !field.ShouldGenerate() {
 			continue
 		}
-		colName := entity.ToSnakeCase(field.Name)
+		colName := util.ToSnakeCase(field.Name)
 		columns = append(columns, colName)
 		args = append(args, fmt.Sprintf("item.%s", field.Name))
 	}
@@ -112,7 +113,7 @@ func (g *RepositoryGenerator) generateCreateMethod(sb *strings.Builder, ent *ent
 		// Composite PK or non-int64 PK - use RETURNING all PK columns
 		var returningColumns []string
 		for _, pkField := range pkFields {
-			returningColumns = append(returningColumns, entity.ToSnakeCase(pkField.Name))
+			returningColumns = append(returningColumns, util.ToSnakeCase(pkField.Name))
 		}
 		query = fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s) RETURNING %s",
 			tableName,
@@ -141,7 +142,7 @@ func (g *RepositoryGenerator) generateCreateMethod(sb *strings.Builder, ent *ent
 	} else {
 		// Composite PK - scan all PK values
 		for _, pkField := range pkFields {
-			sb.WriteString(fmt.Sprintf("    var %s %s\n", entity.ToSnakeCase(pkField.Name), pkField.Type))
+			sb.WriteString(fmt.Sprintf("    var %s %s\n", util.ToSnakeCase(pkField.Name), pkField.Type))
 		}
 		sb.WriteString("    err := db.QueryRowContext(ctx, query, ")
 		for i, arg := range args {
@@ -155,7 +156,7 @@ func (g *RepositoryGenerator) generateCreateMethod(sb *strings.Builder, ent *ent
 			if i > 0 {
 				sb.WriteString(", ")
 			}
-			sb.WriteString(fmt.Sprintf("&%s", entity.ToSnakeCase(pkField.Name)))
+			sb.WriteString(fmt.Sprintf("&%s", util.ToSnakeCase(pkField.Name)))
 		}
 		sb.WriteString(")\n")
 		sb.WriteString("    if err != nil {\n")
@@ -167,7 +168,7 @@ func (g *RepositoryGenerator) generateCreateMethod(sb *strings.Builder, ent *ent
 			if i > 0 {
 				sb.WriteString(", ")
 			}
-			sb.WriteString(entity.ToSnakeCase(pkField.Name))
+			sb.WriteString(util.ToSnakeCase(pkField.Name))
 		}
 		sb.WriteString(")\n")
 	}
@@ -184,7 +185,7 @@ func (g *RepositoryGenerator) generateGetByIDMethod(sb *strings.Builder, ent *en
 		if !field.ShouldGenerate() {
 			continue
 		}
-		colName := entity.ToSnakeCase(field.Name)
+		colName := util.ToSnakeCase(field.Name)
 		columns = append(columns, colName)
 	}
 
@@ -226,7 +227,7 @@ func (g *RepositoryGenerator) generateUpdateMethod(sb *strings.Builder, ent *ent
 		if field.IsPrimary {
 			continue
 		}
-		colName := entity.ToSnakeCase(field.Name)
+		colName := util.ToSnakeCase(field.Name)
 		updates = append(updates, fmt.Sprintf("%s = $%d", colName, len(updates)+1))
 		args = append(args, fmt.Sprintf("item.%s", field.Name))
 	}
@@ -235,7 +236,7 @@ func (g *RepositoryGenerator) generateUpdateMethod(sb *strings.Builder, ent *ent
 	var whereClause []string
 	var whereArgs []string
 	for i, pkField := range pkFields {
-		colName := entity.ToSnakeCase(pkField.Name)
+		colName := util.ToSnakeCase(pkField.Name)
 		whereClause = append(whereClause, fmt.Sprintf("%s = $%d", colName, len(updates)+i+1))
 		whereArgs = append(whereArgs, fmt.Sprintf("item.%s", pkField.Name))
 	}
@@ -283,7 +284,7 @@ func (g *RepositoryGenerator) generateListMethod(sb *strings.Builder, ent *entit
 		if !field.ShouldGenerate() {
 			continue
 		}
-		colName := entity.ToSnakeCase(field.Name)
+		colName := util.ToSnakeCase(field.Name)
 		columns = append(columns, colName)
 	}
 
@@ -291,7 +292,7 @@ func (g *RepositoryGenerator) generateListMethod(sb *strings.Builder, ent *entit
 	var orderBy []string
 	pkFields := ent.GetPrimaryKeyFields()
 	for _, pkField := range pkFields {
-		orderBy = append(orderBy, entity.ToSnakeCase(pkField.Name))
+		orderBy = append(orderBy, util.ToSnakeCase(pkField.Name))
 	}
 	orderClause := "id"
 	if len(orderBy) > 0 {
@@ -391,7 +392,7 @@ func (g *RepositoryGenerator) generateSingleJoinMethod(sb *strings.Builder, ent,
 
 	// Generate the JOIN method
 	sb.WriteString(fmt.Sprintf("func Get%sWith%s(ctx context.Context, db *sql.DB, %sID int64) (*%s, error) {\n",
-		ent.Name, relatedEnt.Name, entity.ToSnakeCase(ent.Name), resultStructName))
+		ent.Name, relatedEnt.Name, util.ToSnakeCase(ent.Name), resultStructName))
 
 	// Build JOIN query
 	tableName := ent.GetTableName()
@@ -413,7 +414,7 @@ func (g *RepositoryGenerator) generateSingleJoinMethod(sb *strings.Builder, ent,
 		strings.Join(columns, ", "),
 		tableName,
 		relatedTableName,
-		tableName, entity.ToSnakeCase(fkField.Name),
+		tableName, util.ToSnakeCase(fkField.Name),
 		relatedTableName, fkField.FKReference.Column,
 		tableName)
 
@@ -433,7 +434,7 @@ func (g *RepositoryGenerator) generateSingleJoinMethod(sb *strings.Builder, ent,
 
 	sb.WriteString(fmt.Sprintf("    var result %s\n", resultStructName))
 	sb.WriteString("    err := db.QueryRowContext(ctx, query, ")
-	sb.WriteString(fmt.Sprintf("%sID", entity.ToSnakeCase(ent.Name)))
+	sb.WriteString(fmt.Sprintf("%sID", util.ToSnakeCase(ent.Name)))
 	sb.WriteString(").Scan(")
 	sb.WriteString(strings.Join(scanFields, ", "))
 	sb.WriteString(")\n")
@@ -501,7 +502,7 @@ func (g *RepositoryGenerator) generateMultiJoinMethod(sb *strings.Builder, ent *
 			if fk.FKReference != nil && fk.FKReference.Table == relatedTableName && fk.ShouldGenerate() {
 				joins = append(joins, fmt.Sprintf("JOIN %s ON %s.%s = %s.%s",
 					relatedTableName,
-					tableName, entity.ToSnakeCase(fk.Name),
+					tableName, util.ToSnakeCase(fk.Name),
 					relatedTableName, fk.FKReference.Column))
 				break
 			}
@@ -565,7 +566,7 @@ func (g *RepositoryGenerator) getEntityColumns(ent *entity.Entity) []string {
 	fields := ent.GetGenerateableFields()
 	var columns []string
 	for _, field := range fields {
-		columns = append(columns, entity.ToSnakeCase(field.Name))
+		columns = append(columns, util.ToSnakeCase(field.Name))
 	}
 	return columns
 }
@@ -580,7 +581,7 @@ func (g *RepositoryGenerator) generateGetByCompositePKMethod(sb *strings.Builder
 	// Build parameter list
 	var params []string
 	for _, pkField := range pkFields {
-		params = append(params, fmt.Sprintf("%s %s", entity.ToSnakeCase(pkField.Name), pkField.Type))
+		params = append(params, fmt.Sprintf("%s %s", util.ToSnakeCase(pkField.Name), pkField.Type))
 	}
 
 	sb.WriteString(fmt.Sprintf(", %s) (*%s, error {\n", strings.Join(params, ", "), ent.Name))
@@ -591,14 +592,14 @@ func (g *RepositoryGenerator) generateGetByCompositePKMethod(sb *strings.Builder
 		if !field.ShouldGenerate() {
 			continue
 		}
-		colName := entity.ToSnakeCase(field.Name)
+		colName := util.ToSnakeCase(field.Name)
 		columns = append(columns, colName)
 	}
 
 	// Build WHERE clause for composite PK
 	var whereClause []string
 	for i, pkField := range pkFields {
-		whereClause = append(whereClause, fmt.Sprintf("%s = $%d", entity.ToSnakeCase(pkField.Name), i+1))
+		whereClause = append(whereClause, fmt.Sprintf("%s = $%d", util.ToSnakeCase(pkField.Name), i+1))
 	}
 
 	query := fmt.Sprintf("SELECT %s FROM %s WHERE %s", strings.Join(columns, ", "), tableName, strings.Join(whereClause, " AND "))
@@ -610,7 +611,7 @@ func (g *RepositoryGenerator) generateGetByCompositePKMethod(sb *strings.Builder
 	// Add PK parameters (use snake_case for parameter names)
 	var scanParams []string
 	for _, pkField := range pkFields {
-		scanParams = append(scanParams, entity.ToSnakeCase(pkField.Name))
+		scanParams = append(scanParams, util.ToSnakeCase(pkField.Name))
 	}
 	sb.WriteString(strings.Join(scanParams, ", "))
 	sb.WriteString(").Scan(")
@@ -642,7 +643,7 @@ func (g *RepositoryGenerator) generateDeleteByCompositePKMethod(sb *strings.Buil
 	// Build parameter list
 	var params []string
 	for _, pkField := range pkFields {
-		params = append(params, fmt.Sprintf("%s %s", entity.ToSnakeCase(pkField.Name), pkField.Type))
+		params = append(params, fmt.Sprintf("%s %s", util.ToSnakeCase(pkField.Name), pkField.Type))
 	}
 
 	sb.WriteString(fmt.Sprintf(", %s) error {\n", strings.Join(params, ", ")))
@@ -650,7 +651,7 @@ func (g *RepositoryGenerator) generateDeleteByCompositePKMethod(sb *strings.Buil
 	// Build WHERE clause for composite PK
 	var whereClause []string
 	for i, pkField := range pkFields {
-		whereClause = append(whereClause, fmt.Sprintf("%s = $%d", entity.ToSnakeCase(pkField.Name), i+1))
+		whereClause = append(whereClause, fmt.Sprintf("%s = $%d", util.ToSnakeCase(pkField.Name), i+1))
 	}
 
 	query := fmt.Sprintf("DELETE FROM %s WHERE %s", tableName, strings.Join(whereClause, " AND "))
@@ -661,7 +662,7 @@ func (g *RepositoryGenerator) generateDeleteByCompositePKMethod(sb *strings.Buil
 	// Add PK parameters
 	var paramsList []string
 	for _, pkField := range pkFields {
-		paramsList = append(paramsList, entity.ToSnakeCase(pkField.Name))
+		paramsList = append(paramsList, util.ToSnakeCase(pkField.Name))
 	}
 	sb.WriteString(strings.Join(paramsList, ", "))
 	sb.WriteString(")\n")

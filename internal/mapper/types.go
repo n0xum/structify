@@ -54,6 +54,12 @@ func (m *Mapper) getBaseType(goType string) string {
 		goType = goType[:idx]
 	}
 
+	// Keep the full qualified name when it has a direct mapping (e.g. time.Time,
+	// json.RawMessage) so the typeMappings lookup succeeds.
+	if _, ok := typeMappings[goType]; ok {
+		return goType
+	}
+
 	parts := strings.Split(goType, ".")
 	if len(parts) > 1 {
 		goType = parts[len(parts)-1]
@@ -119,15 +125,4 @@ func (m *Mapper) HasTag(tags []string, tag string) bool {
 		}
 	}
 	return false
-}
-
-func toSnakeCase(s string) string {
-	var result []rune
-	for i, r := range s {
-		if i > 0 && r >= 'A' && r <= 'Z' {
-			result = append(result, '_')
-		}
-		result = append(result, r)
-	}
-	return strings.ToLower(string(result))
 }

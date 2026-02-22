@@ -35,7 +35,7 @@ func TestSchemaGeneratorGenerate(t *testing.T) {
 	if !strings.Contains(result, "user") {
 		t.Error("Generate() result missing table name")
 	}
-	if !strings.Contains(result, "id") {
+	if !strings.Contains(result, `"id"`) {
 		t.Error("Generate() result missing id column")
 	}
 	if !strings.Contains(result, "PRIMARY KEY") {
@@ -519,12 +519,12 @@ func TestSchemaGeneratorHasCompositeForeignKey(t *testing.T) {
 	gen := NewSchemaGenerator()
 
 	tests := []struct {
-		name  string
+		name   string
 		fields []entity.Field
-		want  bool
+		want   bool
 	}{
 		{
-			name:  "no FKs",
+			name: "no FKs",
 			fields: []entity.Field{
 				{Name: "ID", Type: "int64", IsPrimary: true},
 				{Name: "Name", Type: "string"},
