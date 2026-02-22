@@ -12,23 +12,23 @@ describe("ModeSelector", () => {
     packageError: null,
   };
 
-  it("renders SQL and Code tabs", () => {
+  it("renders SQL and Repo tabs", () => {
     render(<ModeSelector {...defaultProps} />);
     expect(screen.getByText("SQL Schema")).toBeInTheDocument();
-    expect(screen.getByText("Repository Code")).toBeInTheDocument();
+    expect(screen.getByText("Interface Repository")).toBeInTheDocument();
   });
 
-  it("calls onChange when clicking code tab", async () => {
+  it("calls onChange when clicking repo tab", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(<ModeSelector {...defaultProps} onChange={onChange} />);
 
-    await user.click(screen.getByText("Repository Code"));
-    expect(onChange).toHaveBeenCalledWith("code");
+    await user.click(screen.getByText("Interface Repository"));
+    expect(onChange).toHaveBeenCalledWith("repo");
   });
 
-  it("shows package input when mode is code", () => {
-    render(<ModeSelector {...defaultProps} mode="code" />);
+  it("shows package input when mode is repo", () => {
+    render(<ModeSelector {...defaultProps} mode="repo" />);
     expect(screen.getByLabelText("Package name")).toBeInTheDocument();
   });
 
@@ -39,7 +39,7 @@ describe("ModeSelector", () => {
 
   it("shows package error when provided", () => {
     render(
-      <ModeSelector {...defaultProps} mode="code" packageError="Invalid name" />
+      <ModeSelector {...defaultProps} mode="repo" packageError="Invalid name" />
     );
     expect(screen.getByText("Invalid name")).toBeInTheDocument();
   });

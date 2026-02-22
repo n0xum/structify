@@ -72,9 +72,10 @@ func (r *rateLimiter) allow(ip string) bool {
 }
 
 type server struct {
-	queryHandler *query.Handler
-	cmdHandler   *command.Handler
-	limiter      *rateLimiter
+	queryHandler  *query.Handler
+	cmdHandler    *command.Handler
+	parserWrapper *application.ParserWrapper
+	limiter       *rateLimiter
 }
 
 func newServer() *server {
@@ -84,9 +85,10 @@ func newServer() *server {
 	cmdHandler := command.NewHandler(compositeGen)
 
 	return &server{
-		queryHandler: queryHandler,
-		cmdHandler:   cmdHandler,
-		limiter:      newRateLimiter(30, time.Minute),
+		queryHandler:  queryHandler,
+		cmdHandler:    cmdHandler,
+		parserWrapper: parserWrapper,
+		limiter:       newRateLimiter(30, time.Minute),
 	}
 }
 
@@ -102,10 +104,9 @@ func main() {
 	mux.HandleFunc("GET /health", s.handleHealth)
 	mux.HandleFunc("GET /api/version", s.handleVersion)
 	mux.HandleFunc("POST /api/generate/sql", s.handleGenerateSQL)
-	mux.HandleFunc("POST /api/generate/code", s.handleGenerateCode)
+	mux.HandleFunc("POST /api/generate/repo", s.handleGenerateRepo)
 
 	handler := corsMiddleware(s.limiter, mux)
-
 	log.Printf("structify server v%s listening on :%s", version, port)
 	if err := http.ListenAndServe(":"+port, handler); err != nil {
 		log.Fatal(err)
@@ -197,7 +198,7 @@ func (s *server) handleGenerateSQL(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]string{"output": output}, http.StatusOK)
 }
 
-func (s *server) handleGenerateCode(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleGenerateRepo(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Source  string `json:"source"`
 		Package string `json:"package"`
@@ -210,17 +211,47 @@ func (s *server) handleGenerateCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Package == "" {
-		req.Package = "models"
+		req.Package = "repository"
 	}
 
-	entities, err := s.parseSource(r.Context(), req.Source)
+	name, cleanup, err := s.parseSourceToTemp(req.Source)
+	if err != nil {
+		writeError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer cleanup()
+
+	// 1. Parse entities
+	result, err := s.queryHandler.Parse(r.Context(), &query.ParseQuery{Files: []string{name}})
 	if err != nil {
 		writeError(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
+	if result.Count == 0 {
+		writeError(w, "no exported structs found in the provided source", http.StatusUnprocessableEntity)
+		return
+	}
+	ent := result.EntityList[0]
 
-	cmd := &command.GenerateSchemaCommand{PackageName: req.Package, Entities: entities}
-	output, err := s.cmdHandler.GenerateCode(r.Context(), cmd)
+	// 2. Parse interfaces
+	repos, err := s.parserWrapper.ParseInterfaces(r.Context(), []string{name}, ent)
+	if err != nil {
+		writeError(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	if len(repos) == 0 {
+		writeError(w, "no interfaces found in the provided source", http.StatusUnprocessableEntity)
+		return
+	}
+	repo := repos[0]
+
+	// 3. Generate
+	genCmd := &command.GenerateRepoCommand{
+		Entity:      ent,
+		Interface:   repo,
+		PackageName: req.Package,
+	}
+	output, err := s.cmdHandler.GenerateRepository(r.Context(), genCmd)
 	if err != nil {
 		writeError(w, err.Error(), http.StatusUnprocessableEntity)
 		return
@@ -229,21 +260,32 @@ func (s *server) handleGenerateCode(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]string{"output": output}, http.StatusOK)
 }
 
-// parseSource writes source to a temp file and parses it using the existing pipeline.
-func (s *server) parseSource(ctx context.Context, source string) ([]*entity.Entity, error) {
+// parseSourceToTemp writes source to a temp file and returns the filename and a cleanup function.
+func (s *server) parseSourceToTemp(source string) (string, func(), error) {
 	tmp, err := os.CreateTemp("", "structify_*.go")
 	if err != nil {
-		return nil, fmt.Errorf("internal error: could not create temp file")
+		return "", nil, fmt.Errorf("internal error: could not create temp file")
 	}
 	name := tmp.Name()
 
 	if _, err := tmp.WriteString(source); err != nil {
 		tmp.Close()
 		os.Remove(name)
-		return nil, fmt.Errorf("internal error: could not write temp file")
+		return "", nil, fmt.Errorf("internal error: could not write temp file")
 	}
 	tmp.Close()
-	defer os.Remove(name)
+
+	cleanup := func() { os.Remove(name) }
+	return name, cleanup, nil
+}
+
+// parseSource parses source string into entities.
+func (s *server) parseSource(ctx context.Context, source string) ([]*entity.Entity, error) {
+	name, cleanup, err := s.parseSourceToTemp(source)
+	if err != nil {
+		return nil, err
+	}
+	defer cleanup()
 
 	result, err := s.queryHandler.Parse(ctx, &query.ParseQuery{Files: []string{name}})
 	if err != nil {
@@ -255,7 +297,6 @@ func (s *server) parseSource(ctx context.Context, source string) ([]*entity.Enti
 
 	return result.EntityList, nil
 }
-
 func decodeBody(w http.ResponseWriter, r *http.Request, dst any) error {
 	if r.ContentLength > 500*1024 {
 		writeError(w, "request body too large (max 500 KB)", http.StatusRequestEntityTooLarge)

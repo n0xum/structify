@@ -9,7 +9,7 @@ import { ModeSelector, type Mode } from "./ModeSelector";
 import { ExampleLoader } from "./ExampleLoader";
 import { TagReference } from "./TagReference";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { generateSQL, generateCode, fetchVersion } from "@/lib/api";
+import { generateSQL, generateRepository, fetchVersion } from "@/lib/api";
 import { validateInput, validatePackageName } from "@/lib/validation";
 import { EXAMPLES } from "@/lib/examples";
 
@@ -110,7 +110,7 @@ export function StructifyApp() {
     const source = sourceOverride ?? input;
     if (!source.trim() || loading) return;
 
-    if (mode === "code") {
+    if (mode === "repo") {
       const pkgErr = validatePackageName(packageName);
       setPackageError(pkgErr);
       if (pkgErr) return;
@@ -123,7 +123,7 @@ export function StructifyApp() {
       const result =
         mode === "sql"
           ? await generateSQL(source)
-          : await generateCode(source, packageName);
+          : await generateRepository(source, packageName);
       setOutput(result);
 
       if (globalThis.innerWidth < 768) {

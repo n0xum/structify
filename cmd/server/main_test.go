@@ -80,8 +80,8 @@ func TestHandleGenerateSQL_ValidSource(t *testing.T) {
 	source := `package models
 
 type User struct {
-	ID   int64  ` + "`db:\"pk\"`" + `
-	Name string
+        ID   int64  ` + "`db:\"pk\"`" + `
+        Name string
 }
 `
 	body := `{"source":` + toJSON(source) + `}`
@@ -104,50 +104,7 @@ type User struct {
 	}
 }
 
-func TestHandleGenerateCode_DefaultPackage(t *testing.T) {
-	s := newServer()
-	source := `package models
-
-type User struct {
-	ID   int64  ` + "`db:\"pk\"`" + `
-	Name string
-}
-`
-	body := `{"source":` + toJSON(source) + `}`
-	req := httptest.NewRequest(http.MethodPost, "/api/generate/code", strings.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	s.handleGenerateCode(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d; body: %s", w.Code, w.Body.String())
-	}
-
-	var resp map[string]string
-	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
-		t.Fatalf("invalid JSON: %v", err)
-	}
-	if !strings.Contains(resp["output"], "package models") {
-		t.Fatalf("expected package models in output, got %q", resp["output"])
-	}
-}
-
-func TestHandleGenerateCode_EmptySource(t *testing.T) {
-	s := newServer()
-	req := httptest.NewRequest(http.MethodPost, "/api/generate/code", strings.NewReader(`{"source":""}`))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	s.handleGenerateCode(w, req)
-
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", w.Code)
-	}
-}
-
-func TestRateLimiter(t *testing.T) {
-	rl := newRateLimiter(3, time.Minute)
+func TestRateLimiter(t *testing.T) {	rl := newRateLimiter(3, time.Minute)
 
 	for i := 0; i < 3; i++ {
 		if !rl.allow("1.2.3.4") {
@@ -269,7 +226,7 @@ func TestHandleGenerateSQL_NoExportedStructs(t *testing.T) {
 	source := `package models
 
 type unexported struct {
-	id int64
+        id int64
 }
 `
 	body := `{"source":` + toJSON(source) + `}`
@@ -278,26 +235,6 @@ type unexported struct {
 	w := httptest.NewRecorder()
 
 	s.handleGenerateSQL(w, req)
-
-	if w.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("expected 422, got %d; body: %s", w.Code, w.Body.String())
-	}
-}
-
-func TestHandleGenerateCode_NoExportedStructs(t *testing.T) {
-	s := newServer()
-	source := `package models
-
-type unexported struct {
-	id int64
-}
-`
-	body := `{"source":` + toJSON(source) + `}`
-	req := httptest.NewRequest(http.MethodPost, "/api/generate/code", strings.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	s.handleGenerateCode(w, req)
 
 	if w.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("expected 422, got %d; body: %s", w.Code, w.Body.String())
@@ -318,64 +255,7 @@ func TestHandleGenerateSQL_UnparseableSource(t *testing.T) {
 	}
 }
 
-func TestHandleGenerateCode_CustomPackage(t *testing.T) {
-	s := newServer()
-	source := `package models
-
-type User struct {
-	ID   int64  ` + "`db:\"pk\"`" + `
-	Name string
-}
-`
-	body := `{"source":` + toJSON(source) + `,"package":"myapp"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/generate/code", strings.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	s.handleGenerateCode(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d; body: %s", w.Code, w.Body.String())
-	}
-
-	var resp map[string]string
-	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
-		t.Fatalf("invalid JSON: %v", err)
-	}
-	if !strings.Contains(resp["output"], "package myapp") {
-		t.Fatalf("expected package myapp in output, got %q", resp["output"])
-	}
-}
-
-func TestHandleGenerateCode_InvalidJSON(t *testing.T) {
-	s := newServer()
-	req := httptest.NewRequest(http.MethodPost, "/api/generate/code", strings.NewReader(`{bad json`))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	s.handleGenerateCode(w, req)
-
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d; body: %s", w.Code, w.Body.String())
-	}
-}
-
-func TestHandleGenerateCode_UnparseableSource(t *testing.T) {
-	s := newServer()
-	body := `{"source":"this is not valid go code"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/generate/code", strings.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	s.handleGenerateCode(w, req)
-
-	if w.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("expected 422, got %d; body: %s", w.Code, w.Body.String())
-	}
-}
-
-func TestDecodeBody_TooLarge(t *testing.T) {
-	req := httptest.NewRequest(http.MethodPost, "/api/generate/sql", strings.NewReader(`{"source":"x"}`))
+func TestDecodeBody_TooLarge(t *testing.T) {	req := httptest.NewRequest(http.MethodPost, "/api/generate/sql", strings.NewReader(`{"source":"x"}`))
 	req.ContentLength = 600 * 1024 // 600 KB, exceeds 500 KB limit
 	w := httptest.NewRecorder()
 

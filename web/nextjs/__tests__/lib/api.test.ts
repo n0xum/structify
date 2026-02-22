@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { generateSQL, generateCode, fetchVersion } from "@/lib/api";
+import { generateSQL, generateRepository, fetchVersion } from "@/lib/api";
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -58,7 +58,7 @@ describe("generateSQL", () => {
   });
 });
 
-describe("generateCode", () => {
+describe("generateRepository", () => {
   it("sends source and package name", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -67,7 +67,7 @@ describe("generateCode", () => {
     });
     vi.stubGlobal("fetch", mockFetch);
 
-    await generateCode("source", "models");
+    await generateRepository("source", "models");
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.source).toBe("source");

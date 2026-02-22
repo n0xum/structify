@@ -54,12 +54,12 @@ vi.mock("@/components/Editor", () => ({
 // Mock API
 vi.mock("@/lib/api", () => ({
   generateSQL: vi.fn(),
-  generateCode: vi.fn(),
+  generateRepository: vi.fn(),
   fetchVersion: vi.fn().mockResolvedValue("0.1.0"),
 }));
 
 import { StructifyApp } from "@/components/StructifyApp";
-import { generateSQL, generateCode } from "@/lib/api";
+import { generateSQL, generateRepository } from "@/lib/api";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -122,13 +122,13 @@ describe("StructifyApp", () => {
     });
   });
 
-  it("calls generateCode when generate is clicked in code mode", async () => {
+  it("calls generateRepository when generate is clicked in repo mode", async () => {
     const user = userEvent.setup();
-    vi.mocked(generateCode).mockResolvedValue("// generated code");
+    vi.mocked(generateRepository).mockResolvedValue("// generated code");
 
     render(<StructifyApp />);
 
-    await user.click(screen.getByText("Repository Code"));
+    await user.click(screen.getByText("Interface Repository"));
 
     const input = screen.getByTestId("input-editor");
     fireEvent.change(input, { target: { value: "package m\ntype T struct { ID int64 }" } });
@@ -136,7 +136,7 @@ describe("StructifyApp", () => {
     await user.click(screen.getByText("Generate"));
 
     await waitFor(() => {
-      expect(generateCode).toHaveBeenCalled();
+      expect(generateRepository).toHaveBeenCalled();
     });
   });
 
@@ -169,7 +169,7 @@ describe("StructifyApp", () => {
       expect(generateSQL).toHaveBeenCalled();
     });
 
-    await user.click(screen.getByText("Repository Code"));
+    await user.click(screen.getByText("Interface Repository"));
     expect(screen.getByText("Output will appear here")).toBeInTheDocument();
   });
 
@@ -285,11 +285,11 @@ describe("StructifyApp", () => {
     expect(input.value).toBe("");
   });
 
-  it("shows package name input when mode is code", async () => {
+  it("shows package name input when mode is repo", async () => {
     const user = userEvent.setup();
     render(<StructifyApp />);
 
-    await user.click(screen.getByText("Repository Code"));
+    await user.click(screen.getByText("Interface Repository"));
 
     expect(screen.getByPlaceholderText("models")).toBeInTheDocument();
   });

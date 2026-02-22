@@ -31,8 +31,8 @@ export async function generateSQL(source: string): Promise<string> {
   return post("/api/generate/sql", { source });
 }
 
-export async function generateCode(source: string, pkg: string): Promise<string> {
-  return post("/api/generate/code", { source, package: pkg });
+export async function generateRepository(source: string, pkg: string): Promise<string> {
+  return post("/api/generate/repo", { source, package: pkg });
 }
 
 export async function fetchVersion(): Promise<string> {

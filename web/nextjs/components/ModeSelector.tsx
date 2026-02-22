@@ -1,6 +1,6 @@
 "use client";
 
-export type Mode = "sql" | "code";
+export type Mode = "sql" | "repo";
 
 type ModeSelectorProps = {
   mode: Mode;
@@ -37,18 +37,18 @@ export function ModeSelector({
         </button>
         <button
           role="tab"
-          aria-selected={mode === "code"}
-          onClick={() => onChange("code")}
-          className={`flex-1 py-2 px-4 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-zinc-300 ${mode === "code"
+          aria-selected={mode === "repo"}
+          onClick={() => onChange("repo")}
+          className={`flex-1 py-2 px-4 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-zinc-300 ${mode === "repo"
             ? "bg-zinc-100 text-zinc-900 shadow-sm"
             : "bg-zinc-900 text-zinc-400 hover:text-zinc-200"
             }`}
         >
-          Repository Implementation
+          Interface Repository
         </button>
       </div>
 
-      {mode === "code" && (
+      {mode === "repo" && (
         <div className="flex flex-col gap-1">
           <label htmlFor="pkg-input" className="text-xs text-zinc-400">
             Package name
