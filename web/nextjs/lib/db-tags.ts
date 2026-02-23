@@ -8,6 +8,68 @@ export type TagGroup = {
   tags: TagEntry[];
 };
 
+export type MethodEntry = {
+  pattern: string;
+  description: string;
+};
+
+export type MethodGroup = {
+  group: string;
+  methods: MethodEntry[];
+};
+
+/** Method naming conventions for the Interface Repository generator. */
+export const METHOD_GROUPS: MethodGroup[] = [
+  {
+    group: "CRUD (any name)",
+    methods: [
+      { pattern: "Create(ctx, *T) (*T, error)", description: "INSERT … RETURNING" },
+      { pattern: "GetByID(ctx, id) (*T, error)", description: "SELECT … WHERE id = $1" },
+      { pattern: "Update(ctx, *T) error", description: "UPDATE … WHERE id = $n" },
+      { pattern: "Delete(ctx, id) error", description: "DELETE … WHERE id = $1" },
+      { pattern: "List(ctx) ([]*T, error)", description: "SELECT … ORDER BY id" },
+    ],
+  },
+  {
+    group: "FindBy (field conditions)",
+    methods: [
+      { pattern: "FindByField(ctx, v) (*T, error)", description: "WHERE field = $1 → single row" },
+      { pattern: "FindByField(ctx, v) ([]*T, error)", description: "WHERE field = $1 → slice" },
+      { pattern: "FindByXAndY(ctx, x, y) …", description: "WHERE x = $1 AND y = $2" },
+      { pattern: "FindByXOrY(ctx, x, y) …", description: "WHERE x = $1 OR y = $2" },
+    ],
+  },
+  {
+    group: "SmartQuery (method name = full query)",
+    methods: [
+      { pattern: "ListXsByField(ctx, v) ([]*X, error)", description: "SELECT … WHERE field = $1" },
+      { pattern: "CountXsByField(ctx, v) (int64, error)", description: "SELECT COUNT(*) WHERE …" },
+      { pattern: "ExistsXByField(ctx, v) (bool, error)", description: "SELECT EXISTS(SELECT 1 …)" },
+      { pattern: "DeleteXByField(ctx, v) error", description: "DELETE … WHERE field = $1" },
+      { pattern: "…OrderByFieldDesc", description: "Append ORDER BY field DESC" },
+      { pattern: "…OrderByFieldAsc", description: "Append ORDER BY field ASC" },
+    ],
+  },
+  {
+    group: "Operator suffixes",
+    methods: [
+      { pattern: "ByAgeGreaterThan", description: "age > $n" },
+      { pattern: "ByAgeLessThan", description: "age < $n" },
+      { pattern: "ByNameLike", description: "name LIKE $n" },
+      { pattern: "ByIDIn", description: "id IN ($n)" },
+      { pattern: "ByIDNotIn", description: "id NOT IN ($n)" },
+      { pattern: "ByDeletedAtIsNull", description: "deleted_at IS NULL" },
+      { pattern: "ByDeletedAtIsNotNull", description: "deleted_at IS NOT NULL" },
+    ],
+  },
+  {
+    group: "CustomSQL",
+    methods: [
+      { pattern: `//sql:"SELECT …"`, description: "Exact SQL used verbatim; $1, $2 … for params" },
+    ],
+  },
+];
+
 export const TAG_GROUPS: TagGroup[] = [
   {
     group: "Basic",

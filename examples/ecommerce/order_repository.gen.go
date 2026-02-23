@@ -6,7 +6,7 @@ import (
 )
 
 type OrderRepositoryImpl struct {
-	db *sql.DB
+	db *sql.DBmake
 }
 
 func NewOrderRepository(db *sql.DB) OrderRepository {
@@ -210,4 +210,3 @@ func (r *OrderRepositoryImpl) CancelOldPendingOrders(ctx context.Context, olderT
 	_, err := r.db.ExecContext(ctx, query, olderThan)
 	return err
 }
-

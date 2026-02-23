@@ -189,11 +189,13 @@ export function StructifyApp() {
               </span>
             )}
             <p className="hidden sm:block text-sm text-zinc-400">
-              Go structs to PostgreSQL, instantly.
+              {mode === "sql"
+                ? "Go structs to PostgreSQL, instantly."
+                : "Go interfaces to repository implementations, instantly."}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <ExampleLoader onSelect={handleExampleSelect} />
+            <ExampleLoader mode={mode} onSelect={handleExampleSelect} />
             <Link
               href="/docs"
               className="text-zinc-400 hover:text-zinc-200 transition-colors text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-zinc-400 rounded"
@@ -219,9 +221,9 @@ export function StructifyApp() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-zinc-400 uppercase tracking-widest">
-                  Go Struct
+                  {mode === "sql" ? "Go Struct" : "Go Struct + Interface"}
                 </span>
-                <TagReference />
+                <TagReference mode={mode} />
               </div>
               <span className="text-xs text-zinc-600">
                 {(input.length / 1024).toFixed(1)} KB

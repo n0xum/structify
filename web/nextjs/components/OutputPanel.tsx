@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { HighlightedCode } from "./HighlightedCode";
+import { Editor } from "./Editor";
 import type { Mode } from "./ModeSelector";
 
 type OutputPanelProps = {
@@ -36,10 +36,13 @@ export function OutputPanel({ output, mode }: Readonly<OutputPanelProps>) {
       </div>
 
       {output ? (
-        <div className="flex-1 min-h-0 bg-zinc-900 border border-zinc-800 rounded-lg overflow-auto p-4 text-sm font-mono leading-relaxed">
-          <HighlightedCode
-            code={output}
+        <div className="flex-1 min-h-0">
+          <Editor
+            value={output}
             language={mode === "sql" ? "sql" : "go"}
+            readOnly
+            label="Generated output"
+            id="output-editor"
           />
         </div>
       ) : (

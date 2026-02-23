@@ -3,20 +3,20 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TagReference } from "@/components/TagReference";
 
-describe("TagReference", () => {
-  it("renders toggle button", () => {
-    render(<TagReference />);
+describe("TagReference — sql mode", () => {
+  it("renders toggle button with db tag label", () => {
+    render(<TagReference mode="sql" />);
     expect(screen.getByLabelText("Show db tag reference")).toBeInTheDocument();
   });
 
   it("does not show tooltip initially", () => {
-    render(<TagReference />);
+    render(<TagReference mode="sql" />);
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 
   it("shows tooltip on click", async () => {
     const user = userEvent.setup();
-    render(<TagReference />);
+    render(<TagReference mode="sql" />);
 
     await user.click(screen.getByLabelText("Show db tag reference"));
     expect(screen.getByRole("tooltip")).toBeInTheDocument();
@@ -25,7 +25,7 @@ describe("TagReference", () => {
 
   it("hides tooltip on second click", async () => {
     const user = userEvent.setup();
-    render(<TagReference />);
+    render(<TagReference mode="sql" />);
 
     const btn = screen.getByLabelText("Show db tag reference");
     await user.click(btn);
@@ -37,7 +37,7 @@ describe("TagReference", () => {
 
   it("shows all tag groups when open", async () => {
     const user = userEvent.setup();
-    render(<TagReference />);
+    render(<TagReference mode="sql" />);
 
     await user.click(screen.getByLabelText("Show db tag reference"));
     expect(screen.getByText("Constraints")).toBeInTheDocument();
@@ -48,7 +48,7 @@ describe("TagReference", () => {
 
   it("shows check constraint tag", async () => {
     const user = userEvent.setup();
-    render(<TagReference />);
+    render(<TagReference mode="sql" />);
 
     await user.click(screen.getByLabelText("Show db tag reference"));
     expect(screen.getByText('db:"check:age >= 18"')).toBeInTheDocument();
@@ -56,7 +56,7 @@ describe("TagReference", () => {
 
   it("shows foreign key tag", async () => {
     const user = userEvent.setup();
-    render(<TagReference />);
+    render(<TagReference mode="sql" />);
 
     await user.click(screen.getByLabelText("Show db tag reference"));
     expect(screen.getByText('db:"fk:users,id"')).toBeInTheDocument();
@@ -64,9 +64,56 @@ describe("TagReference", () => {
 
   it("shows enum tag", async () => {
     const user = userEvent.setup();
-    render(<TagReference />);
+    render(<TagReference mode="sql" />);
 
     await user.click(screen.getByLabelText("Show db tag reference"));
     expect(screen.getByText('db:"enum:a,b,c"')).toBeInTheDocument();
+  });
+});
+
+describe("TagReference — repo mode", () => {
+  it("renders toggle button with method naming label", () => {
+    render(<TagReference mode="repo" />);
+    expect(screen.getByLabelText("Show method naming reference")).toBeInTheDocument();
+  });
+
+  it("shows method naming reference heading when open", async () => {
+    const user = userEvent.setup();
+    render(<TagReference mode="repo" />);
+
+    await user.click(screen.getByLabelText("Show method naming reference"));
+    expect(screen.getByText("method naming reference")).toBeInTheDocument();
+  });
+
+  it("shows SmartQuery group", async () => {
+    const user = userEvent.setup();
+    render(<TagReference mode="repo" />);
+
+    await user.click(screen.getByLabelText("Show method naming reference"));
+    expect(screen.getByText("SmartQuery (method name = full query)")).toBeInTheDocument();
+  });
+
+  it("shows FindBy group", async () => {
+    const user = userEvent.setup();
+    render(<TagReference mode="repo" />);
+
+    await user.click(screen.getByLabelText("Show method naming reference"));
+    expect(screen.getByText("FindBy (field conditions)")).toBeInTheDocument();
+  });
+
+  it("shows CustomSQL entry", async () => {
+    const user = userEvent.setup();
+    render(<TagReference mode="repo" />);
+
+    await user.click(screen.getByLabelText("Show method naming reference"));
+    expect(screen.getByText("CustomSQL")).toBeInTheDocument();
+  });
+
+  it("does not show db tag content", async () => {
+    const user = userEvent.setup();
+    render(<TagReference mode="repo" />);
+
+    await user.click(screen.getByLabelText("Show method naming reference"));
+    expect(screen.queryByText('db:"pk"')).not.toBeInTheDocument();
   });
 });

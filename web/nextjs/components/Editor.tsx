@@ -14,12 +14,12 @@ type EditorProps = {
 
 const DynamicEditor = dynamic(
   async () => {
-    const [{ default: CodeMirror }, { go }, { sql }, { githubDark }] =
+    const [{ default: CodeMirror }, { go }, { sql }, { intellijTheme }] =
       await Promise.all([
         import("@uiw/react-codemirror"),
         import("@codemirror/lang-go"),
         import("@codemirror/lang-sql"),
-        import("@uiw/codemirror-theme-github"),
+        import("@/lib/intellij-theme"),
       ]);
 
     return function EditorInner({
@@ -35,7 +35,7 @@ const DynamicEditor = dynamic(
           value={value}
           onChange={onChange}
           extensions={extensions}
-          theme={githubDark}
+          theme={intellijTheme}
           readOnly={readOnly}
           placeholder={placeholder}
           basicSetup={{
