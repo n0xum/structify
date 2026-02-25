@@ -10,3 +10,13 @@ body {
   color: var(--foreground);
   font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
+
+.syntax-highlight pre[class*="language-"],
+.syntax-highlight code[class*="language-"] {
+  color: #bcbec4 !important;
+  background: transparent !important;
+  text-shadow: none !important;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace !important;
+}

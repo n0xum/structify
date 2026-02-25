@@ -90,7 +90,7 @@ describe("TagReference — repo mode", () => {
     render(<TagReference mode="repo" />);
 
     await user.click(screen.getByLabelText("Show method naming reference"));
-    expect(screen.getByText("SmartQuery (method name = full query)")).toBeInTheDocument();
+    expect(screen.getByText("SmartQuery methods")).toBeInTheDocument();
   });
 
   it("shows FindBy group", async () => {
@@ -98,15 +98,23 @@ describe("TagReference — repo mode", () => {
     render(<TagReference mode="repo" />);
 
     await user.click(screen.getByLabelText("Show method naming reference"));
-    expect(screen.getByText("FindBy (field conditions)")).toBeInTheDocument();
+    expect(screen.getByText("FindBy filters")).toBeInTheDocument();
   });
 
-  it("shows CustomSQL entry", async () => {
+  it("shows custom SQL override group", async () => {
     const user = userEvent.setup();
     render(<TagReference mode="repo" />);
 
     await user.click(screen.getByLabelText("Show method naming reference"));
-    expect(screen.getByText("CustomSQL")).toBeInTheDocument();
+    expect(screen.getByText("Custom SQL override")).toBeInTheDocument();
+  });
+
+  it("shows repository method signature guidance", async () => {
+    const user = userEvent.setup();
+    render(<TagReference mode="repo" />);
+
+    await user.click(screen.getByLabelText("Show method naming reference"));
+    expect(screen.getByText(/context\.Context/)).toBeInTheDocument();
   });
 
   it("does not show db tag content", async () => {

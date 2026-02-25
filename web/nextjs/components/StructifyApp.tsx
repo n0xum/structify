@@ -9,7 +9,7 @@ import { ModeSelector, type Mode } from "./ModeSelector";
 import { ExampleLoader } from "./ExampleLoader";
 import { TagReference } from "./TagReference";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { generateSQL, generateRepository, fetchVersion } from "@/lib/api";
+import { generateSQL, generateRepository } from "@/lib/api";
 import { validateInput, validatePackageName } from "@/lib/validation";
 import { EXAMPLES } from "@/lib/examples";
 
@@ -37,6 +37,7 @@ type UserRepository interface {
 }`;
 
 export function StructifyApp() {
+  const version = "0.1.0";
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -48,8 +49,6 @@ export function StructifyApp() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
-  const [version, setVersion] = useState<string | null>(null);
-
   const outputRef = useRef<HTMLDivElement>(null);
   const pendingGenerate = useRef(false);
 
@@ -100,11 +99,6 @@ export function StructifyApp() {
     params.set("mode", mode);
     router.replace(`?${params.toString()}`, { scroll: false });
   }, [mode, router, searchParams]);
-
-  // Fetch backend version
-  useEffect(() => {
-    fetchVersion().then(setVersion);
-  }, []);
 
   const handleGenerate = useCallback(async (sourceOverride?: string) => {
     const source = sourceOverride ?? input;
@@ -183,11 +177,9 @@ export function StructifyApp() {
         <header className="border-b border-zinc-800 px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <span className="font-mono font-bold text-lg text-zinc-100">structify</span>
-            {version && (
-              <span className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full border border-zinc-700">
-                v{version}
-              </span>
-            )}
+            <span className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full border border-zinc-700">
+              v{version}
+            </span>
             <p className="hidden sm:block text-sm text-zinc-400">
               {mode === "sql"
                 ? "Go structs to PostgreSQL, instantly."

@@ -76,24 +76,15 @@ describe("generateRepository", () => {
 });
 
 describe("fetchVersion", () => {
-  it("returns version string", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ version: "0.1.0" }),
-      })
-    );
-
+  it("returns hardcoded version string", async () => {
     expect(await fetchVersion()).toBe("0.1.0");
   });
 
-  it("returns unknown on failure", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockRejectedValue(new Error("network error"))
-    );
+  it("does not fetch version from backend", async () => {
+    const mockFetch = vi.fn();
+    vi.stubGlobal("fetch", mockFetch);
 
-    expect(await fetchVersion()).toBe("unknown");
+    await fetchVersion();
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 });
