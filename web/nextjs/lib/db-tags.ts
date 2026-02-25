@@ -8,6 +8,68 @@ export type TagGroup = {
   tags: TagEntry[];
 };
 
+export type MethodEntry = {
+  pattern: string;
+  description: string;
+};
+
+export type MethodGroup = {
+  group: string;
+  methods: MethodEntry[];
+};
+
+/** Method naming conventions for the Interface Repository generator. */
+export const METHOD_GROUPS: MethodGroup[] = [
+  {
+    group: "CRUD methods",
+    methods: [
+      { pattern: "Create(ctx, *T) error", description: "Insert one row from struct fields." },
+      { pattern: "Create(ctx, *T) (*T, error)", description: "Insert and return the saved row." },
+      { pattern: "FindByID(ctx, id) (*T, error)", description: "Lookup by primary key." },
+      { pattern: "Update(ctx, *T) error", description: "Update row matched by primary key." },
+      { pattern: "DeleteByID(ctx, id) error", description: "Delete row matched by primary key." },
+    ],
+  },
+  {
+    group: "FindBy filters",
+    methods: [
+      { pattern: "FindByEmail(ctx, email) (*T, error)", description: "Single-row result by one field." },
+      { pattern: "FindByStatus(ctx, status) ([]*T, error)", description: "Multi-row result by one field." },
+      { pattern: "FindByEmailAndStatus(ctx, email, status) …", description: "Combine conditions with AND." },
+      { pattern: "FindByEmailOrUsername(ctx, email, username) …", description: "Combine conditions with OR." },
+    ],
+  },
+  {
+    group: "SmartQuery methods",
+    methods: [
+      { pattern: "ListUsersByStatus(ctx, status) ([]*User, error)", description: "List with filter conditions." },
+      { pattern: "CountUsersByStatus(ctx, status) (int64, error)", description: "Count rows matching filters." },
+      { pattern: "ExistsUserByEmail(ctx, email) (bool, error)", description: "Return true when a row exists." },
+      { pattern: "DeleteUserByEmail(ctx, email) error", description: "Delete rows matched by filters." },
+      { pattern: "...OrderByCreatedDesc", description: "Add ORDER BY created DESC." },
+      { pattern: "...OrderByCreatedAsc", description: "Add ORDER BY created ASC." },
+    ],
+  },
+  {
+    group: "Operator suffixes",
+    methods: [
+      { pattern: "ByAgeGreaterThan", description: "Use > comparison." },
+      { pattern: "ByAgeLessThan", description: "Use < comparison." },
+      { pattern: "ByNameLike", description: "Use LIKE comparison." },
+      { pattern: "ByIDIn", description: "Use IN (...) comparison." },
+      { pattern: "ByIDNotIn", description: "Use NOT IN (...) comparison." },
+      { pattern: "ByDeletedAtIsNull", description: "Use IS NULL check." },
+      { pattern: "ByDeletedAtIsNotNull", description: "Use IS NOT NULL check." },
+    ],
+  },
+  {
+    group: "Custom SQL override",
+    methods: [
+      { pattern: `//sql:"SELECT ... WHERE email = $1"`, description: "Run explicit SQL when naming rules are not enough." },
+    ],
+  },
+];
+
 export const TAG_GROUPS: TagGroup[] = [
   {
     group: "Basic",

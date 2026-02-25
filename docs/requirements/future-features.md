@@ -84,28 +84,10 @@
 
 ## Category 5: JSON Features
 
-### 5.1 JSON to Struct
-- Already has `--from-json` flag (not implemented)
-- Parse JSON and generate Go structs
-- Inverse of current functionality
-
-### 5.2 JSON Columns
+### 5.1 JSON Columns
 - Support `json.RawMessage` fields
 - Generate JSONB columns
 - Add JSON path query helpers
-
-## Category 6: Database Support
-
-### 6.1 MySQL Support
-- Add MySQL dialect
-- Type mapping adjustments
-- Backtick identifiers instead of quotes
-- Add `--dialect=mysql` flag
-
-### 6.2 SQLite Support
-- Add SQLite dialect
-- Different type system
-- Add `--dialect=sqlite` flag
 
 ## Category 7: Query Building
 

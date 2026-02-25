@@ -9,21 +9,35 @@ import { ModeSelector, type Mode } from "./ModeSelector";
 import { ExampleLoader } from "./ExampleLoader";
 import { TagReference } from "./TagReference";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { generateSQL, generateCode, fetchVersion } from "@/lib/api";
+import { generateSQL, generateRepository } from "@/lib/api";
 import { validateInput, validatePackageName } from "@/lib/validation";
 import { EXAMPLES } from "@/lib/examples";
 
 const STORAGE_KEY = "structify_input";
 const DEFAULT_PLACEHOLDER = `package models
 
+import "context"
+
 type User struct {
-\tID       int64  \`db:"pk"\`
-\tUsername string \`db:"unique"\`
-\tEmail    string
-\tActive   bool
+	ID       int64  \`db:"pk"\`
+	Username string \`db:"unique"\`
+	Email    string
+	Active   bool
+	Created  int64
+}
+
+// UserRepository defines the methods to access User data.
+// Structify will generate the implementation for this interface.
+type UserRepository interface {
+	FindByID(ctx context.Context, id int64) (*User, error)
+	FindByUsername(ctx context.Context, username string) (*User, error)
+	Create(ctx context.Context, user *User) error
+	Update(ctx context.Context, user *User) error
+	Delete(ctx context.Context, id int64) error
 }`;
 
 export function StructifyApp() {
+  const version = "0.1.0";
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -35,8 +49,6 @@ export function StructifyApp() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
-  const [version, setVersion] = useState<string | null>(null);
-
   const outputRef = useRef<HTMLDivElement>(null);
   const pendingGenerate = useRef(false);
 
@@ -67,7 +79,7 @@ export function StructifyApp() {
     params.delete("load");
     const newSearch = params.toString();
     router.replace(newSearch ? `?${newSearch}` : "/", { scroll: false });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Persist input to localStorage
@@ -88,16 +100,11 @@ export function StructifyApp() {
     router.replace(`?${params.toString()}`, { scroll: false });
   }, [mode, router, searchParams]);
 
-  // Fetch backend version
-  useEffect(() => {
-    fetchVersion().then(setVersion);
-  }, []);
-
   const handleGenerate = useCallback(async (sourceOverride?: string) => {
     const source = sourceOverride ?? input;
     if (!source.trim() || loading) return;
 
-    if (mode === "code") {
+    if (mode === "repo") {
       const pkgErr = validatePackageName(packageName);
       setPackageError(pkgErr);
       if (pkgErr) return;
@@ -110,7 +117,7 @@ export function StructifyApp() {
       const result =
         mode === "sql"
           ? await generateSQL(source)
-          : await generateCode(source, packageName);
+          : await generateRepository(source, packageName);
       setOutput(result);
 
       if (globalThis.innerWidth < 768) {
@@ -170,20 +177,20 @@ export function StructifyApp() {
         <header className="border-b border-zinc-800 px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <span className="font-mono font-bold text-lg text-zinc-100">structify</span>
-            {version && (
-              <span className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full border border-zinc-700">
-                v{version}
-              </span>
-            )}
+            <span className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full border border-zinc-700">
+              v{version}
+            </span>
             <p className="hidden sm:block text-sm text-zinc-400">
-              Go structs to PostgreSQL, instantly.
+              {mode === "sql"
+                ? "Go structs to PostgreSQL, instantly."
+                : "Go interfaces to repository implementations, instantly."}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <ExampleLoader onSelect={handleExampleSelect} />
+            <ExampleLoader mode={mode} onSelect={handleExampleSelect} />
             <Link
               href="/docs"
-              className="text-zinc-400 hover:text-zinc-200 transition-colors text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 rounded"
+              className="text-zinc-400 hover:text-zinc-200 transition-colors text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-zinc-400 rounded"
             >
               Docs
             </Link>
@@ -192,7 +199,7 @@ export function StructifyApp() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="GitHub repository"
-              className="text-zinc-400 hover:text-zinc-200 transition-colors text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 rounded"
+              className="text-zinc-400 hover:text-zinc-200 transition-colors text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-zinc-400 rounded"
             >
               GitHub
             </a>
@@ -206,9 +213,9 @@ export function StructifyApp() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-zinc-400 uppercase tracking-widest">
-                  Go Struct
+                  {mode === "sql" ? "Go Struct" : "Go Struct + Interface"}
                 </span>
-                <TagReference />
+                <TagReference mode={mode} />
               </div>
               <span className="text-xs text-zinc-600">
                 {(input.length / 1024).toFixed(1)} KB
@@ -230,7 +237,7 @@ export function StructifyApp() {
             {warnings.length > 0 && (
               <ul className="flex flex-col gap-1" aria-describedby="input-editor">
                 {warnings.map((w) => (
-                  <li key={w} className="text-xs text-yellow-500">
+                  <li key={w} className="text-xs text-zinc-400">
                     {w}
                   </li>
                 ))}
@@ -240,7 +247,7 @@ export function StructifyApp() {
             {/* Error */}
             {error && (
               <p
-                className="text-xs text-red-400 bg-red-950/40 border border-red-800 rounded-md px-3 py-2"
+                className="text-xs text-zinc-300 bg-zinc-900 border border-zinc-800 rounded-md px-3 py-2"
                 role="alert"
                 aria-live="polite"
               >
@@ -261,7 +268,7 @@ export function StructifyApp() {
                 onClick={() => handleGenerate()}
                 disabled={!canGenerate}
                 aria-label="Generate output (Ctrl+Enter)"
-                className="w-full py-2.5 rounded-lg bg-sky-600 text-white text-sm font-semibold transition-colors hover:bg-sky-500 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
+                className="w-full py-2.5 rounded-lg bg-zinc-100 text-zinc-950 text-sm font-semibold transition-colors hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-zinc-400 shadow-sm"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">

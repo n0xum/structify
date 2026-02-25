@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { OutputPanel } from "@/components/OutputPanel";
 
-// Mock the Editor since CodeMirror doesn't work in jsdom
+// Editor uses CodeMirror which doesn't work in jsdom — mock it.
 vi.mock("@/components/Editor", () => ({
   Editor: ({ value, id }: { value: string; id: string }) => (
     <pre data-testid={id}>{value}</pre>
@@ -49,5 +49,12 @@ describe("OutputPanel", () => {
 
     expect(writeText).toHaveBeenCalledWith("test output");
     expect(screen.getByText("Copied!")).toBeInTheDocument();
+  });
+
+  it("renders Go output in repo mode", () => {
+    render(<OutputPanel output="func (r *Repo) List() {}" mode="repo" />);
+    expect(screen.getByTestId("output-editor")).toHaveTextContent(
+      "func (r *Repo) List() {}"
+    );
   });
 });

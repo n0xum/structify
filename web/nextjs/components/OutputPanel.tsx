@@ -28,7 +28,7 @@ export function OutputPanel({ output, mode }: Readonly<OutputPanelProps>) {
           <button
             onClick={handleCopy}
             aria-label="Copy output to clipboard"
-            className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors px-2 py-1 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500"
+            className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors px-2 py-1 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-zinc-400"
           >
             {copied ? "Copied!" : "Copy"}
           </button>

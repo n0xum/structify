@@ -80,8 +80,8 @@ func TestHandleGenerateSQL_ValidSource(t *testing.T) {
 	source := `package models
 
 type User struct {
-	ID   int64  ` + "`db:\"pk\"`" + `
-	Name string
+        ID   int64  ` + "`db:\"pk\"`" + `
+        Name string
 }
 `
 	body := `{"source":` + toJSON(source) + `}`
@@ -104,50 +104,7 @@ type User struct {
 	}
 }
 
-func TestHandleGenerateCode_DefaultPackage(t *testing.T) {
-	s := newServer()
-	source := `package models
-
-type User struct {
-	ID   int64  ` + "`db:\"pk\"`" + `
-	Name string
-}
-`
-	body := `{"source":` + toJSON(source) + `}`
-	req := httptest.NewRequest(http.MethodPost, "/api/generate/code", strings.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	s.handleGenerateCode(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d; body: %s", w.Code, w.Body.String())
-	}
-
-	var resp map[string]string
-	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
-		t.Fatalf("invalid JSON: %v", err)
-	}
-	if !strings.Contains(resp["output"], "package models") {
-		t.Fatalf("expected package models in output, got %q", resp["output"])
-	}
-}
-
-func TestHandleGenerateCode_EmptySource(t *testing.T) {
-	s := newServer()
-	req := httptest.NewRequest(http.MethodPost, "/api/generate/code", strings.NewReader(`{"source":""}`))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	s.handleGenerateCode(w, req)
-
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", w.Code)
-	}
-}
-
-func TestRateLimiter(t *testing.T) {
-	rl := newRateLimiter(3, time.Minute)
+func TestRateLimiter(t *testing.T) {	rl := newRateLimiter(3, time.Minute)
 
 	for i := 0; i < 3; i++ {
 		if !rl.allow("1.2.3.4") {
@@ -261,6 +218,102 @@ func TestGetAllowedOrigins_Env(t *testing.T) {
 	origins := getAllowedOrigins()
 	if len(origins) != 2 {
 		t.Fatalf("expected 2 origins, got %d", len(origins))
+	}
+}
+
+func TestHandleGenerateSQL_NoExportedStructs(t *testing.T) {
+	s := newServer()
+	source := `package models
+
+type unexported struct {
+        id int64
+}
+`
+	body := `{"source":` + toJSON(source) + `}`
+	req := httptest.NewRequest(http.MethodPost, "/api/generate/sql", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	s.handleGenerateSQL(w, req)
+
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422, got %d; body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleGenerateSQL_UnparseableSource(t *testing.T) {
+	s := newServer()
+	body := `{"source":"not valid go"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/generate/sql", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	s.handleGenerateSQL(w, req)
+
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422, got %d; body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestDecodeBody_TooLarge(t *testing.T) {	req := httptest.NewRequest(http.MethodPost, "/api/generate/sql", strings.NewReader(`{"source":"x"}`))
+	req.ContentLength = 600 * 1024 // 600 KB, exceeds 500 KB limit
+	w := httptest.NewRecorder()
+
+	var dst struct {
+		Source string `json:"source"`
+	}
+	err := decodeBody(w, req, &dst)
+
+	if err == nil {
+		t.Fatal("expected error for oversized body, got nil")
+	}
+	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("expected 413, got %d", w.Code)
+	}
+}
+
+func TestClientIP_RemoteAddrNoPort(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Del("X-Forwarded-For")
+	req.RemoteAddr = "192.168.1.1" // no port — SplitHostPort will fail
+
+	if got := clientIP(req); got != "192.168.1.1" {
+		t.Fatalf("expected 192.168.1.1, got %q", got)
+	}
+}
+
+func TestCORSMiddleware_RateLimitExceeded(t *testing.T) {
+	limiter := newRateLimiter(1, time.Minute)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /test", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	handler := corsMiddleware(limiter, mux)
+
+	// First request — allowed.
+	req1 := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req1.RemoteAddr = "10.0.0.1:1234"
+	w1 := httptest.NewRecorder()
+	handler.ServeHTTP(w1, req1)
+	if w1.Code != http.StatusOK {
+		t.Fatalf("first request: expected 200, got %d", w1.Code)
+	}
+
+	// Second request — should be rate-limited.
+	req2 := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req2.RemoteAddr = "10.0.0.1:1234"
+	w2 := httptest.NewRecorder()
+	handler.ServeHTTP(w2, req2)
+	if w2.Code != http.StatusTooManyRequests {
+		t.Fatalf("second request: expected 429, got %d", w2.Code)
+	}
+
+	var resp map[string]string
+	if err := json.NewDecoder(w2.Body).Decode(&resp); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if !strings.Contains(resp["error"], "rate limit exceeded") {
+		t.Fatalf("expected rate limit error message, got %q", resp["error"])
 	}
 }
 

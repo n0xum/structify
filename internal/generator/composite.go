@@ -9,8 +9,8 @@ import (
 )
 
 type CompositeGenerator struct {
-	sqlGenerator   *sql.SchemaGenerator
-	codeGenerator  *code.RepositoryGenerator
+	sqlGenerator  *sql.SchemaGenerator
+	codeGenerator *code.RepositoryGenerator
 }
 
 func NewCompositeGenerator() *CompositeGenerator {
@@ -26,4 +26,8 @@ func (g *CompositeGenerator) GenerateSchema(ctx context.Context, entities []*ent
 
 func (g *CompositeGenerator) GenerateCode(ctx context.Context, packageName string, entities []*entity.Entity) (string, error) {
 	return g.codeGenerator.Generate(ctx, packageName, entities)
+}
+
+func (g *CompositeGenerator) GenerateRepository(ctx context.Context, packageName string, ent *entity.Entity, repo *entity.RepositoryInterface) (string, error) {
+	return g.codeGenerator.GenerateFromInterface(ctx, packageName, ent, repo)
 }

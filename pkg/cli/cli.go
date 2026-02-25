@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/n0xum/structify/internal/application"
 	"github.com/n0xum/structify/internal/application/command"
@@ -13,13 +14,13 @@ import (
 )
 
 type Command struct {
-	FS          *flag.FlagSet
-	ToSQL       bool
-	ToDBCode    bool
-	FromJSON    bool
-	JSONFile    string
-	OutputFile  string
-	ShowVersion bool
+	FS            *flag.FlagSet
+	ToSQL         bool
+	ToRepo        bool
+	ModelFile     string
+	InterfaceFile string
+	OutputFile    string
+	ShowVersion   bool
 }
 
 func NewCommand() *Command {
@@ -29,11 +30,9 @@ func NewCommand() *Command {
 
 	cmd.FS.BoolVar(&cmd.ToSQL, "to-sql", false, "Generate PostgreSQL CREATE TABLE statements")
 	cmd.FS.BoolVar(&cmd.ToSQL, "to-schema", false, "Generate PostgreSQL CREATE TABLE statements (alias)")
-	cmd.FS.BoolVar(&cmd.ToDBCode, "to-db-sql", false, "Generate database/sql CRUD code")
-	cmd.FS.BoolVar(&cmd.ToDBCode, "to-dbcode", false, "Generate database/sql CRUD code (alias)")
-	cmd.FS.BoolVar(&cmd.FromJSON, "from-json", false, "Convert JSON to Go struct")
-	cmd.FS.StringVar(&cmd.JSONFile, "json-file", "", "JSON input file")
-	cmd.FS.StringVar(&cmd.JSONFile, "f", "", "JSON input file (shorthand)")
+	cmd.FS.BoolVar(&cmd.ToRepo, "to-repo", false, "Generate repository implementation from interface")
+	cmd.FS.StringVar(&cmd.ModelFile, "model", "", "Model Go file with struct definitions (for --to-repo)")
+	cmd.FS.StringVar(&cmd.InterfaceFile, "interface", "", "Go file containing the repository interface (for --to-repo)")
 	cmd.FS.StringVar(&cmd.OutputFile, "o", "", "Output file")
 	cmd.FS.StringVar(&cmd.OutputFile, "output", "", "Output file")
 	cmd.FS.BoolVar(&cmd.ShowVersion, "version", false, "Show version")
@@ -47,14 +46,19 @@ func (c *Command) Parse(args []string) error {
 }
 
 func (c *Command) Validate() error {
-	if c.FromJSON && c.JSONFile == "" {
-		return fmt.Errorf("--from-json requires --json-file")
+	if c.ToRepo {
+		if c.ModelFile == "" {
+			return fmt.Errorf("--to-repo requires --model")
+		}
+		if c.InterfaceFile == "" {
+			return fmt.Errorf("--to-repo requires --interface")
+		}
+		return nil
 	}
-	if !c.ToSQL && !c.ToDBCode && !c.FromJSON {
+	if !c.ToSQL {
 		fmt.Fprintln(os.Stderr, "No output flag specified. Use one of:")
-		fmt.Fprintln(os.Stderr, "  --to-sql      Generate PostgreSQL schema")
-		fmt.Fprintln(os.Stderr, "  --to-db-sql    Generate database/sql code")
-		fmt.Fprintln(os.Stderr, "  --from-json    Convert JSON to Go struct")
+		fmt.Fprintln(os.Stderr, "  --to-sql       Generate PostgreSQL schema")
+		fmt.Fprintln(os.Stderr, "  --to-repo      Generate repository implementation")
 		fmt.Fprintln(os.Stderr, "")
 		fmt.Fprintln(os.Stderr, "Parsing and validating structs only (no output generated)")
 		return fmt.Errorf("no output flag specified")
@@ -63,10 +67,11 @@ func (c *Command) Validate() error {
 }
 
 type App struct {
-	cmd          *Command
-	version      string
-	queryHandler *query.Handler
-	cmdHandler   *command.Handler
+	cmd           *Command
+	version       string
+	queryHandler  *query.Handler
+	cmdHandler    *command.Handler
+	parserWrapper *application.ParserWrapper
 }
 
 func New(version string) *App {
@@ -79,17 +84,18 @@ func New(version string) *App {
 	cmdHandler := command.NewHandler(compositeGen)
 
 	return &App{
-		cmd:          cmd,
-		version:      version,
-		queryHandler: queryHandler,
-		cmdHandler:   cmdHandler,
+		cmd:           cmd,
+		version:       version,
+		queryHandler:  queryHandler,
+		cmdHandler:    cmdHandler,
+		parserWrapper: parserWrapper,
 	}
 }
 
 func (a *App) Run(args []string) error {
 	if len(args) < 2 {
 		a.printUsage()
-		return fmt.Errorf("no input files specified")
+		return fmt.Errorf("no arguments specified")
 	}
 
 	if err := a.cmd.Parse(args); err != nil {
@@ -105,13 +111,14 @@ func (a *App) Run(args []string) error {
 		return err
 	}
 
-	inputFiles := a.cmd.FS.Args()
+	ctx := context.Background()
 
-	if a.cmd.FromJSON {
-		return a.convertJSON()
+	if a.cmd.ToRepo {
+		return a.runRepoGeneration(ctx)
 	}
 
-	ctx := context.Background()
+	// Standard struct-based flow (--to-sql, or parse-only)
+	inputFiles := a.cmd.FS.Args()
 
 	parseQuery := &query.ParseQuery{Files: inputFiles}
 	parseResult, err := a.queryHandler.Parse(ctx, parseQuery)
@@ -129,19 +136,6 @@ func (a *App) Run(args []string) error {
 		if err != nil {
 			return err
 		}
-	} else if a.cmd.ToDBCode {
-		if parseResult.Count == 0 {
-			return fmt.Errorf("no structs found")
-		}
-		pkgName := parseResult.Package
-		if pkgName == "" {
-			pkgName = "models"
-		}
-		cmd := &command.GenerateSchemaCommand{PackageName: pkgName, Entities: parseResult.EntityList}
-		output, err = a.cmdHandler.GenerateCode(ctx, cmd)
-		if err != nil {
-			return err
-		}
 	} else {
 		fmt.Fprintf(os.Stderr, "Found %d struct(s):\n", parseResult.Count)
 		for _, ent := range parseResult.EntityList {
@@ -150,19 +144,91 @@ func (a *App) Run(args []string) error {
 		return nil
 	}
 
-	return a.writeOutput(output)
+	return a.writeOutput(output, a.cmd.OutputFile)
 }
 
-func (a *App) convertJSON() error {
-	return fmt.Errorf("JSON conversion not yet implemented")
+func (a *App) runRepoGeneration(ctx context.Context) error {
+	// 1. Parse model files → entities
+	parseQuery := &query.ParseQuery{Files: []string{a.cmd.ModelFile}}
+	parseResult, err := a.queryHandler.Parse(ctx, parseQuery)
+	if err != nil {
+		return fmt.Errorf("parse model: %w", err)
+	}
+	if parseResult.Count == 0 {
+		return fmt.Errorf("no structs found in model file %s", a.cmd.ModelFile)
+	}
+
+	// Use first entity as the target entity
+	ent := parseResult.EntityList[0]
+
+	// 2. Parse interface file → interfaces (bound to entity)
+	repos, err := a.parserWrapper.ParseInterfaces(ctx, []string{a.cmd.InterfaceFile}, ent)
+	if err != nil {
+		return fmt.Errorf("parse interface: %w", err)
+	}
+	if len(repos) == 0 {
+		return fmt.Errorf("no interfaces found in %s", a.cmd.InterfaceFile)
+	}
+
+	repo := repos[0]
+
+	// 3. Determine package name
+	pkgName := parseResult.Package
+	if pkgName == "" {
+		pkgName = "repository"
+	}
+
+	// 4. Generate
+	cmd := &command.GenerateRepoCommand{
+		Entity:      ent,
+		Interface:   repo,
+		PackageName: pkgName,
+	}
+	output, err := a.cmdHandler.GenerateRepository(ctx, cmd)
+	if err != nil {
+		return err
+	}
+
+	// 5. Determine output file (default to interface file directory with .gen.go suffix)
+	outputFile := a.cmd.OutputFile
+	if outputFile == "" {
+		outputFile = a.getDefaultOutputFile(a.cmd.InterfaceFile)
+	}
+
+	return a.writeOutput(output, outputFile)
 }
 
-func (a *App) writeOutput(output string) error {
-	if a.cmd.OutputFile != "" {
-		return os.WriteFile(a.cmd.OutputFile, []byte(output), 0600)
+func (a *App) writeOutput(output string, outputFile string) error {
+	if outputFile != "" {
+		return os.WriteFile(outputFile, []byte(output), 0600)
 	}
 	_, err := fmt.Fprint(os.Stdout, output)
 	return err
+}
+
+// getDefaultOutputFile generates a default output filename based on the interface file path.
+// For example: "./repo/user_repository.go" → "./repo/user_repository.gen.go"
+func (a *App) getDefaultOutputFile(interfaceFile string) string {
+	// Get the directory and base filename
+	dir := ""
+	baseName := interfaceFile
+
+	if lastSlash := strings.LastIndex(interfaceFile, "/"); lastSlash != -1 {
+		dir = interfaceFile[:lastSlash+1]
+		baseName = interfaceFile[lastSlash+1:]
+	} else if lastSlash := strings.LastIndex(interfaceFile, "\\"); lastSlash != -1 {
+		dir = interfaceFile[:lastSlash+1]
+		baseName = interfaceFile[lastSlash+1:]
+	}
+
+	// Remove .go extension and add .gen.go
+	if strings.HasSuffix(baseName, ".go") {
+		baseName = strings.TrimSuffix(baseName, ".go") + ".gen.go"
+	} else {
+		baseName = baseName + ".gen.go"
+	}
+
+	return dir + baseName
 }
 
 func (a *App) printUsage() {
@@ -174,12 +240,8 @@ func (a *App) printUsage() {
 	fmt.Fprintln(os.Stderr, "Flags:")
 	fmt.Fprintln(os.Stderr, "  --to-sql, --to-schema")
 	fmt.Fprintln(os.Stderr, "        Generate PostgreSQL CREATE TABLE statements")
-	fmt.Fprintln(os.Stderr, "  --to-db-sql, --to-dbcode")
-	fmt.Fprintln(os.Stderr, "        Generate database/sql CRUD code")
-	fmt.Fprintln(os.Stderr, "  --from-json")
-	fmt.Fprintln(os.Stderr, "        Convert JSON to Go struct")
-	fmt.Fprintln(os.Stderr, "  --json-file, -f <file>")
-	fmt.Fprintln(os.Stderr, "        JSON input file for --from-json")
+	fmt.Fprintln(os.Stderr, "  --to-repo --model <file> --interface <file>")
+	fmt.Fprintln(os.Stderr, "        Generate repository implementation from interface")
 	fmt.Fprintln(os.Stderr, "  --output, -o <file>")
 	fmt.Fprintln(os.Stderr, "        Output file (default: stdout)")
 	fmt.Fprintln(os.Stderr, "  --version, -v")
@@ -189,6 +251,7 @@ func (a *App) printUsage() {
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "Examples:")
 	fmt.Fprintln(os.Stderr, "  structify --to-sql ./models/user.go")
-	fmt.Fprintln(os.Stderr, "  structify --to-db-sql ./models/*.go -o user_repo.go")
+	fmt.Fprintln(os.Stderr, "  structify --to-repo --model ./models/user.go --interface ./repo/user_repo.go")
+	fmt.Fprintln(os.Stderr, "  structify --to-repo --model ./models/user.go --interface ./repo/user_repo.go -o ./repo/user_repo.gen.go")
 	fmt.Fprintln(os.Stderr, "")
 }

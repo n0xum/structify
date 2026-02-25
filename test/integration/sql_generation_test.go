@@ -15,7 +15,6 @@ import (
 )
 
 var fixturesDir = filepath.Join("..", "fixtures")
-var expectedDir = filepath.Join("..", "expected")
 
 // helpers ──────────────────────────────────────────────────────────────────
 

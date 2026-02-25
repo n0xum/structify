@@ -5,26 +5,55 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"strconv"
 	"strings"
+
+	"github.com/n0xum/structify/internal/util"
 )
 
 type Field struct {
-	Name       string
+	Name        string
 	Type        string
 	DatabaseTag string
 }
 
 type Struct struct {
-	Name       string
+	Name        string
 	Fields      []Field
 	PackageName string
 	TableName   string
 }
 
+type Interface struct {
+	Name        string
+	Methods     []Method
+	PackageName string
+}
+
+type Method struct {
+	Name       string
+	Params     []Param
+	Returns    []Return
+	SQLComment string
+}
+
+type Param struct {
+	Name string
+	Type string
+}
+
+type Return struct {
+	Type      string
+	IsSlice   bool
+	IsPointer bool
+	BaseType  string
+}
+
 type Parser struct {
-	fset    *token.FileSet
-	structs  map[string][]*Struct
-	pkgName string
+	fset       *token.FileSet
+	structs    map[string][]*Struct
+	interfaces map[string][]*Interface
+	pkgName    string
 }
 
 type visitor struct {
@@ -45,25 +74,37 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 				if !ok {
 					continue
 				}
-				structType, ok := typeSpec.Type.(*ast.StructType)
-				if !ok {
+				typeName := typeSpec.Name.Name
+				if !token.IsExported(typeName) {
 					continue
 				}
-				structName := typeSpec.Name.Name
-				if !token.IsExported(structName) {
-					continue
-				}
-				s := &Struct{
-					Name:       structName,
-					PackageName: v.p.pkgName,
-					TableName:   toSnakeCase(structName),
-				}
-				v.p.extractFields(structType, s)
-				if len(s.Fields) > 0 {
-					if v.p.pkgName == "" {
-						v.p.pkgName = "main"
+
+				switch t := typeSpec.Type.(type) {
+				case *ast.StructType:
+					s := &Struct{
+						Name:        typeName,
+						PackageName: v.p.pkgName,
+						TableName:   util.ToSnakeCase(typeName),
 					}
-					v.p.structs[v.p.pkgName] = append(v.p.structs[v.p.pkgName], s)
+					v.p.extractFields(t, s)
+					if len(s.Fields) > 0 {
+						if v.p.pkgName == "" {
+							v.p.pkgName = "main"
+						}
+						v.p.structs[v.p.pkgName] = append(v.p.structs[v.p.pkgName], s)
+					}
+				case *ast.InterfaceType:
+					iface := &Interface{
+						Name:        typeName,
+						PackageName: v.p.pkgName,
+					}
+					v.p.extractMethods(t, iface)
+					if len(iface.Methods) > 0 {
+						if v.p.pkgName == "" {
+							v.p.pkgName = "main"
+						}
+						v.p.interfaces[v.p.pkgName] = append(v.p.interfaces[v.p.pkgName], iface)
+					}
 				}
 			}
 		}
@@ -73,13 +114,15 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 
 func New() *Parser {
 	return &Parser{
-		fset:   token.NewFileSet(),
-		structs: make(map[string][]*Struct),
+		fset:       token.NewFileSet(),
+		structs:    make(map[string][]*Struct),
+		interfaces: make(map[string][]*Interface),
 	}
 }
 
 func (p *Parser) ParseFiles(paths []string) error {
 	p.structs = make(map[string][]*Struct)
+	p.interfaces = make(map[string][]*Interface)
 	p.pkgName = ""
 	for _, path := range paths {
 		if err := p.parseFile(path); err != nil {
@@ -93,6 +136,11 @@ func (p *Parser) parseFile(path string) error {
 	f, err := parser.ParseFile(p.fset, path, nil, parser.ParseComments)
 	if err != nil {
 		return err
+	}
+
+	// Store the package name from the AST file
+	if f.Name != nil {
+		p.pkgName = f.Name.Name
 	}
 
 	ast.Walk(&visitor{p: p}, f)
@@ -121,7 +169,7 @@ func (p *Parser) extractFields(structType *ast.StructType, s *Struct) {
 		}
 
 		if field.Type != nil {
-			f.Type = exprToString(field.Type)
+			f.Type = exprToFullString(field.Type)
 		}
 
 		if f.Type == "" {
@@ -132,8 +180,111 @@ func (p *Parser) extractFields(structType *ast.StructType, s *Struct) {
 	}
 }
 
+func (p *Parser) extractMethods(ifaceType *ast.InterfaceType, iface *Interface) {
+	if ifaceType.Methods == nil {
+		return
+	}
+
+	for _, field := range ifaceType.Methods.List {
+		funcType, ok := field.Type.(*ast.FuncType)
+		if !ok {
+			continue
+		}
+		if len(field.Names) == 0 {
+			continue
+		}
+
+		m := Method{
+			Name: field.Names[0].Name,
+		}
+
+		// Parse //sql:"..." from Doc comments
+		if field.Doc != nil {
+			for _, comment := range field.Doc.List {
+				text := strings.TrimSpace(comment.Text)
+				if strings.HasPrefix(text, "//sql:") {
+					sqlVal := strings.TrimPrefix(text, "//sql:")
+					// Use strconv.Unquote so that escape sequences like \"
+					// inside the SQL string are properly resolved.
+					if unquoted, err := strconv.Unquote(sqlVal); err == nil {
+						sqlVal = unquoted
+					} else {
+						sqlVal = strings.Trim(sqlVal, `"`)
+					}
+					m.SQLComment = sqlVal
+				}
+			}
+		}
+
+		// Extract parameters (skip first ctx context.Context)
+		if funcType.Params != nil {
+			skipFirst := true
+			for _, param := range funcType.Params.List {
+				typeStr := exprToFullString(param.Type)
+				if skipFirst && typeStr == "context.Context" {
+					skipFirst = false
+					continue
+				}
+				skipFirst = false
+
+				if len(param.Names) == 0 {
+					m.Params = append(m.Params, Param{Type: typeStr})
+				} else {
+					for _, name := range param.Names {
+						m.Params = append(m.Params, Param{
+							Name: name.Name,
+							Type: typeStr,
+						})
+					}
+				}
+			}
+		}
+
+		// Extract return types
+		if funcType.Results != nil {
+			for _, result := range funcType.Results.List {
+				typeStr := exprToFullString(result.Type)
+				ret := Return{
+					Type: typeStr,
+				}
+
+				// Analyze the type structure
+				ret.IsSlice = strings.HasPrefix(typeStr, "[]*") || strings.HasPrefix(typeStr, "[]")
+				ret.IsPointer = strings.HasPrefix(typeStr, "*")
+
+				// Extract base type
+				base := typeStr
+				if strings.HasPrefix(base, "[]*") {
+					base = strings.TrimPrefix(base, "[]*")
+					ret.IsSlice = true
+					ret.IsPointer = true
+				} else if strings.HasPrefix(base, "[]") {
+					base = strings.TrimPrefix(base, "[]")
+				} else if strings.HasPrefix(base, "*") {
+					base = strings.TrimPrefix(base, "*")
+				}
+				ret.BaseType = base
+
+				if len(result.Names) == 0 {
+					m.Returns = append(m.Returns, ret)
+				} else {
+					for range result.Names {
+						m.Returns = append(m.Returns, ret)
+					}
+				}
+			}
+		}
+
+		iface.Methods = append(iface.Methods, m)
+	}
+}
+
 func (p *Parser) GetStructs() map[string][]*Struct {
 	return p.structs
+}
+
+func (p *Parser) GetInterfaces() map[string][]*Interface {
+	return p.interfaces
 }
 
 func exprToString(expr ast.Expr) string {
@@ -158,6 +309,35 @@ func exprToString(expr ast.Expr) string {
 		return "interface{}"
 	case *ast.Ellipsis:
 		return "..."
+	default:
+		return "any"
+	}
+}
+
+// exprToFullString converts an AST expression to a full type string,
+// preserving package qualifiers (e.g., "context.Context", "sql.DB").
+func exprToFullString(expr ast.Expr) string {
+	if expr == nil {
+		return ""
+	}
+
+	switch v := expr.(type) {
+	case *ast.Ident:
+		return v.Name
+	case *ast.SelectorExpr:
+		return exprToFullString(v.X) + "." + v.Sel.Name
+	case *ast.StarExpr:
+		return "*" + exprToFullString(v.X)
+	case *ast.ArrayType:
+		return "[]" + exprToFullString(v.Elt)
+	case *ast.MapType:
+		return "map[" + exprToFullString(v.Key) + "]" + exprToFullString(v.Value)
+	case *ast.ChanType:
+		return "chan"
+	case *ast.InterfaceType:
+		return "interface{}"
+	case *ast.Ellipsis:
+		return "..." + exprToFullString(v.Elt)
 	default:
 		return "any"
 	}
@@ -205,15 +385,4 @@ func parseTagParts(tag string) []string {
 		parts = append(parts, current.String())
 	}
 	return parts
-}
-
-func toSnakeCase(s string) string {
-	var result []rune
-	for i, r := range s {
-		if i > 0 && r >= 'A' && r <= 'Z' {
-			result = append(result, '_')
-		}
-		result = append(result, r)
-	}
-	return strings.ToLower(string(result))
 }

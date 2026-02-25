@@ -366,7 +366,6 @@ Then the output area scrolls into view automatically
 
 ## Out of Scope (v0.2.0+)
 
-- `--from-json` (JSON to Go struct) UI — blocked on CLI backend implementation
 - Shareable permalink to a generation result (requires server-side storage)
 - File upload for `.go` files
 - Manual dark/light theme toggle

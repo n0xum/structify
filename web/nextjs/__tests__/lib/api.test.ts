@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { generateSQL, generateCode, fetchVersion } from "@/lib/api";
+import { generateSQL, generateRepository, fetchVersion } from "@/lib/api";
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -58,7 +58,7 @@ describe("generateSQL", () => {
   });
 });
 
-describe("generateCode", () => {
+describe("generateRepository", () => {
   it("sends source and package name", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -67,7 +67,7 @@ describe("generateCode", () => {
     });
     vi.stubGlobal("fetch", mockFetch);
 
-    await generateCode("source", "models");
+    await generateRepository("source", "models");
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.source).toBe("source");
@@ -76,24 +76,15 @@ describe("generateCode", () => {
 });
 
 describe("fetchVersion", () => {
-  it("returns version string", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ version: "0.1.0" }),
-      })
-    );
-
+  it("returns hardcoded version string", async () => {
     expect(await fetchVersion()).toBe("0.1.0");
   });
 
-  it("returns unknown on failure", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockRejectedValue(new Error("network error"))
-    );
+  it("does not fetch version from backend", async () => {
+    const mockFetch = vi.fn();
+    vi.stubGlobal("fetch", mockFetch);
 
-    expect(await fetchVersion()).toBe("unknown");
+    await fetchVersion();
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 });
