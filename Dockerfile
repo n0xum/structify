@@ -11,5 +11,6 @@ RUN apk --no-cache add ca-certificates wget && \
 WORKDIR /app
 COPY --from=builder /app/server .
 USER appuser
-EXPOSE 8088
+EXPOSE 8087
+ENV PORT=8087
 CMD ["./server"]

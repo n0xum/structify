@@ -64,7 +64,7 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 "$SSH_USER@$SSH_HOST" << 'ENDSSH'
             set -e
 
-            cd /home/n0xum/docker
+            cd /home/n0xum/docker/compose/apps
 
             sudo docker compose stop structify-backend || true
             sudo docker compose build --no-cache structify-backend
@@ -82,7 +82,7 @@ jobs:
           SSH_HOST: ${{ secrets.SERVER_HOST }}
         run: |
           ssh -i ~/.ssh/id_ed25519 "$SSH_USER@$SSH_HOST" << 'ENDSSH'
-            cd /home/n0xum/docker
+            cd /home/n0xum/docker/compose/apps
             for i in $(seq 1 12); do
               if sudo docker compose ps structify-backend --format json | grep -q '"healthy"'; then
                 echo "Health check passed"
