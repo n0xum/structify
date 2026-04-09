@@ -22,7 +22,7 @@ export function ExampleLoader({ mode, onSelect }: Readonly<ExampleLoaderProps>) 
       defaultValue=""
       onChange={handleChange}
       aria-label={mode === "repo" ? "Load example interface" : "Load example struct"}
-      className="bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1.5 text-sm text-zinc-300 focus:outline-none focus:ring-2 focus:ring-zinc-400 cursor-pointer"
+      className="cursor-pointer rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
     >
       <option value="" disabled>
         Load example…

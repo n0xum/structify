@@ -9,6 +9,7 @@ import { ModeSelector, type Mode } from "./ModeSelector";
 import { ExampleLoader } from "./ExampleLoader";
 import { TagReference } from "./TagReference";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { ThemeToggle } from "./ThemeToggle";
 import { generateSQL, generateRepository } from "@/lib/api";
 import { validateInput, validatePackageName } from "@/lib/validation";
 import { EXAMPLES } from "@/lib/examples";
@@ -52,7 +53,6 @@ export function StructifyApp() {
   const outputRef = useRef<HTMLDivElement>(null);
   const pendingGenerate = useRef(false);
 
-  // Restore input from localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -62,7 +62,6 @@ export function StructifyApp() {
     }
   }, []);
 
-  // Load example from ?load= query param (runs after localStorage so it can override)
   useEffect(() => {
     const loadLabel = searchParams.get("load");
     if (!loadLabel) return;
@@ -82,7 +81,6 @@ export function StructifyApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Persist input to localStorage
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, input);
@@ -92,7 +90,6 @@ export function StructifyApp() {
     setWarnings(validateInput(input));
   }, [input]);
 
-  // Sync mode to URL query param only when it differs
   useEffect(() => {
     if (searchParams.get("mode") === mode) return;
     const params = new URLSearchParams(searchParams.toString());
@@ -130,7 +127,6 @@ export function StructifyApp() {
     }
   }, [input, mode, packageName, loading]);
 
-  // Auto-generate after example is loaded
   useEffect(() => {
     if (pendingGenerate.current && input) {
       pendingGenerate.current = false;
@@ -138,7 +134,6 @@ export function StructifyApp() {
     }
   }, [input, handleGenerate]);
 
-  // Keyboard shortcut Ctrl/Cmd+Enter
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
@@ -172,25 +167,26 @@ export function StructifyApp() {
 
   return (
     <ErrorBoundary>
-      <div className="flex flex-col min-h-screen bg-zinc-950 text-zinc-100">
-        {/* Header */}
-        <header className="border-b border-zinc-800 px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex min-h-screen flex-col bg-[var(--color-bg)] text-[var(--color-text-primary)]">
+        <header className="flex items-center justify-between gap-4 border-b border-[var(--color-border)] px-4 py-3">
           <div className="flex items-center gap-3">
-            <span className="font-mono font-bold text-lg text-zinc-100">structify</span>
-            <span className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full border border-zinc-700">
+            <span className="font-mono text-lg font-bold text-[var(--color-text-primary)]">structify</span>
+            <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-2 py-0.5 text-xs text-[var(--color-text-muted)]">
               v{version}
             </span>
-            <p className="hidden sm:block text-sm text-zinc-400">
+            <p className="hidden text-sm text-[var(--color-text-secondary)] sm:block">
               {mode === "sql"
                 ? "Go structs to PostgreSQL, instantly."
                 : "Go interfaces to repository implementations, instantly."}
             </p>
           </div>
+
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <ExampleLoader mode={mode} onSelect={handleExampleSelect} />
             <Link
               href="/docs"
-              className="text-zinc-400 hover:text-zinc-200 transition-colors text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-zinc-400 rounded"
+              className="rounded text-sm text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
             >
               Docs
             </Link>
@@ -199,30 +195,28 @@ export function StructifyApp() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="GitHub repository"
-              className="text-zinc-400 hover:text-zinc-200 transition-colors text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-zinc-400 rounded"
+              className="rounded text-sm text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
             >
               GitHub
             </a>
           </div>
         </header>
 
-        {/* Main */}
-        <main className="flex flex-col flex-1 p-4 gap-4 md:flex-row">
-          {/* Left panel — input */}
-          <div className="flex flex-col gap-3 flex-1 min-h-[400px] md:min-h-0">
+        <main className="flex flex-1 flex-col gap-4 p-4 md:flex-row">
+          <div className="flex min-h-[400px] flex-1 flex-col gap-3 md:min-h-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-zinc-400 uppercase tracking-widest">
+                <span className="text-xs font-medium uppercase tracking-widest text-[var(--color-text-secondary)]">
                   {mode === "sql" ? "Go Struct" : "Go Struct + Interface"}
                 </span>
                 <TagReference mode={mode} />
               </div>
-              <span className="text-xs text-zinc-600">
+              <span className="text-xs text-[var(--color-text-muted)]">
                 {(input.length / 1024).toFixed(1)} KB
               </span>
             </div>
 
-            <div className="flex-1 min-h-0">
+            <div className="min-h-0 flex-1">
               <Editor
                 value={input}
                 onChange={setInput}
@@ -233,21 +227,19 @@ export function StructifyApp() {
               />
             </div>
 
-            {/* Warnings */}
             {warnings.length > 0 && (
               <ul className="flex flex-col gap-1" aria-describedby="input-editor">
                 {warnings.map((w) => (
-                  <li key={w} className="text-xs text-zinc-400">
+                  <li key={w} className="text-xs text-[var(--color-text-secondary)]">
                     {w}
                   </li>
                 ))}
               </ul>
             )}
 
-            {/* Error */}
             {error && (
               <p
-                className="text-xs text-zinc-300 bg-zinc-900 border border-zinc-800 rounded-md px-3 py-2"
+                className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-2 text-xs text-[var(--color-danger)]"
                 role="alert"
                 aria-live="polite"
               >
@@ -255,7 +247,6 @@ export function StructifyApp() {
               </p>
             )}
 
-            {/* Controls */}
             <div className="flex flex-col gap-3">
               <ModeSelector
                 mode={mode}
@@ -268,29 +259,28 @@ export function StructifyApp() {
                 onClick={() => handleGenerate()}
                 disabled={!canGenerate}
                 aria-label="Generate output (Ctrl+Enter)"
-                className="w-full py-2.5 rounded-lg bg-zinc-100 text-zinc-950 text-sm font-semibold transition-colors hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-zinc-400 shadow-sm"
+                className="w-full rounded-lg bg-[var(--color-text-primary)] py-2.5 text-sm font-semibold text-[var(--color-text-inverse)] shadow-sm transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                     </svg>
-                    Generating…
+                    Generating...
                   </span>
                 ) : (
                   "Generate"
                 )}
               </button>
-              <p className="text-xs text-zinc-600 text-center">
+              <p className="text-center text-xs text-[var(--color-text-muted)]">
                 or press{" "}
-                <kbd className="font-mono bg-zinc-800 px-1 rounded text-zinc-400">Ctrl+Enter</kbd>
+                <kbd className="rounded bg-[var(--color-bg-subtle)] px-1 font-mono text-[var(--color-text-secondary)]">Ctrl+Enter</kbd>
               </p>
             </div>
           </div>
 
-          {/* Right panel — output */}
-          <div ref={outputRef} className="flex flex-col flex-1 min-h-[300px] md:min-h-0">
+          <div ref={outputRef} className="flex min-h-[300px] flex-1 flex-col md:min-h-0">
             <OutputPanel output={output} mode={mode} />
           </div>
         </main>

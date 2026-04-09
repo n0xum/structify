@@ -19,16 +19,16 @@ export function OutputPanel({ output, mode }: Readonly<OutputPanelProps>) {
   }
 
   return (
-    <div className="flex flex-col h-full gap-2">
+    <div className="flex h-full flex-col gap-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-zinc-400 uppercase tracking-widest">
+        <span className="text-xs font-medium uppercase tracking-widest text-[var(--color-text-secondary)]">
           Output
         </span>
         {output && (
           <button
             onClick={handleCopy}
             aria-label="Copy output to clipboard"
-            className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors px-2 py-1 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-zinc-400"
+            className="rounded px-2 py-1 text-xs text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
           >
             {copied ? "Copied!" : "Copy"}
           </button>
@@ -36,7 +36,7 @@ export function OutputPanel({ output, mode }: Readonly<OutputPanelProps>) {
       </div>
 
       {output ? (
-        <div className="flex-1 min-h-0">
+        <div className="min-h-0 flex-1">
           <Editor
             value={output}
             language={mode === "sql" ? "sql" : "go"}
@@ -46,7 +46,7 @@ export function OutputPanel({ output, mode }: Readonly<OutputPanelProps>) {
           />
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center rounded-lg border border-dashed border-zinc-700 text-sm text-zinc-500">
+        <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-[var(--color-border)] text-sm text-[var(--color-text-muted)]">
           Output will appear here
         </div>
       )}

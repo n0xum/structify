@@ -30,7 +30,7 @@ export const CATEGORIES: DocCategory[] = [
     intro: (
       <>
         Define tables with structs and control SQL output with{" "}
-        <code className="rounded bg-zinc-800/60 px-1 py-0.5 text-zinc-200">db:&quot;...&quot;</code> tags.
+        <code className="rounded bg-[var(--color-bg-subtle)] px-1 py-0.5 text-[var(--color-text-primary)]">db:&quot;...&quot;</code> tags.
         These sections explain exactly which tags belong where and what SQL is generated.
       </>
     ),
@@ -41,7 +41,7 @@ export const CATEGORIES: DocCategory[] = [
         summary: (
           <>
             One struct maps to one table. Struct names are pluralized and converted to snake_case. Field names become columns in snake_case.
-            Use <code className="rounded bg-zinc-800/60 px-1 py-0.5 text-zinc-200">db:&quot;pk&quot;</code> for the primary key.
+            Use <code className="rounded bg-[var(--color-bg-subtle)] px-1 py-0.5 text-[var(--color-text-primary)]">db:&quot;pk&quot;</code> for the primary key.
           </>
         ),
         sourceCode: `package models
@@ -70,7 +70,7 @@ type BlogPost struct {
         summary: (
           <>
             Combine tag instructions comma-separated:{" "}
-            <code className="rounded bg-zinc-800/60 px-1 py-0.5 text-zinc-200">db:&quot;check:...,default:...,enum:...&quot;</code>.
+            <code className="rounded bg-[var(--color-bg-subtle)] px-1 py-0.5 text-[var(--color-text-primary)]">db:&quot;check:...,default:...,enum:...&quot;</code>.
             Keep each rule explicit so generated SQL stays predictable.
           </>
         ),
@@ -101,8 +101,8 @@ type Account struct {
         title: "Indexes & Foreign Keys",
         summary: (
           <>
-            Use <code className="rounded bg-zinc-800/60 px-1 py-0.5 text-zinc-200">index</code>, <code className="rounded bg-zinc-800/60 px-1 py-0.5 text-zinc-200">unique_index:&lt;name&gt;</code>,
-            and <code className="rounded bg-zinc-800/60 px-1 py-0.5 text-zinc-200">fk:&lt;table&gt;,&lt;column&gt;,on_delete:CASCADE</code>.
+            Use <code className="rounded bg-[var(--color-bg-subtle)] px-1 py-0.5 text-[var(--color-text-primary)]">index</code>, <code className="rounded bg-[var(--color-bg-subtle)] px-1 py-0.5 text-[var(--color-text-primary)]">unique_index:&lt;name&gt;</code>,
+            and <code className="rounded bg-[var(--color-bg-subtle)] px-1 py-0.5 text-[var(--color-text-primary)]">fk:&lt;table&gt;,&lt;column&gt;,on_delete:CASCADE</code>.
             Share the same index name across multiple fields for composite indexes.
           </>
         ),
@@ -140,7 +140,7 @@ CREATE INDEX idx_articles_title_lang ON articles (language, title);`,
     title: "Repository",
     intro: (
       <>
-        Generate implementation code from interfaces with <code className="rounded bg-zinc-800/60 px-1 py-0.5 text-zinc-200">--to-repo</code>.
+        Generate implementation code from interfaces with <code className="rounded bg-[var(--color-bg-subtle)] px-1 py-0.5 text-[var(--color-text-primary)]">--to-repo</code>.
         Naming conventions and method signatures decide which queries are generated.
       </>
     ),
@@ -150,7 +150,7 @@ CREATE INDEX idx_articles_title_lang ON articles (language, title);`,
         title: "Pre-requisites Checklist",
         summary: (
           <>
-            Before generation: model has primary key, field types are supported, and interface methods use <code className="rounded bg-zinc-800/60 px-1 py-0.5 text-zinc-200">context.Context</code> as first argument.
+            Before generation: model has primary key, field types are supported, and interface methods use <code className="rounded bg-[var(--color-bg-subtle)] px-1 py-0.5 text-[var(--color-text-primary)]">context.Context</code> as first argument.
             Keep signatures deterministic so generated code remains stable.
           </>
         ),
@@ -180,8 +180,8 @@ type UserRepository interface {
         title: "Interface Design Rules",
         summary: (
           <>
-            Use <code className="rounded bg-zinc-800/60 px-1 py-0.5 text-zinc-200">&lt;Model&gt;Repository</code> as interface name.
-            Prefer clear method verbs like <code className="rounded bg-zinc-800/60 px-1 py-0.5 text-zinc-200">FindBy</code>, <code className="rounded bg-zinc-800/60 px-1 py-0.5 text-zinc-200">Create</code>, <code className="rounded bg-zinc-800/60 px-1 py-0.5 text-zinc-200">Update</code>, and <code className="rounded bg-zinc-800/60 px-1 py-0.5 text-zinc-200">DeleteBy</code>.
+            Use <code className="rounded bg-[var(--color-bg-subtle)] px-1 py-0.5 text-[var(--color-text-primary)]">&lt;Model&gt;Repository</code> as interface name.
+            Prefer clear method verbs like <code className="rounded bg-[var(--color-bg-subtle)] px-1 py-0.5 text-[var(--color-text-primary)]">FindBy</code>, <code className="rounded bg-[var(--color-bg-subtle)] px-1 py-0.5 text-[var(--color-text-primary)]">Create</code>, <code className="rounded bg-[var(--color-bg-subtle)] px-1 py-0.5 text-[var(--color-text-primary)]">Update</code>, and <code className="rounded bg-[var(--color-bg-subtle)] px-1 py-0.5 text-[var(--color-text-primary)]">DeleteBy</code>.
           </>
         ),
         sourceCode: `type UserRepository interface {
@@ -212,7 +212,7 @@ Avoid:
         title: "Method Derivation & Query Mapping",
         summary: (
           <>
-            Query filters are derived from method names. Example: <code className="rounded bg-zinc-800/60 px-1 py-0.5 text-zinc-200">FindByTitleAndLanguage</code>
+            Query filters are derived from method names. Example: <code className="rounded bg-[var(--color-bg-subtle)] px-1 py-0.5 text-[var(--color-text-primary)]">FindByTitleAndLanguage</code>
             maps to a WHERE clause with both columns.
           </>
         ),

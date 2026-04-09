@@ -20,7 +20,7 @@ export function ModeSelector({
   return (
     <div className="flex flex-col gap-3">
       <div
-        className="flex rounded-lg border border-zinc-700 overflow-hidden"
+        className="flex overflow-hidden rounded-lg border border-[var(--color-border)]"
         role="tablist"
         aria-label="Output mode"
       >
@@ -28,9 +28,9 @@ export function ModeSelector({
           role="tab"
           aria-selected={mode === "sql"}
           onClick={() => onChange("sql")}
-          className={`flex-1 py-2 px-4 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-zinc-300 ${mode === "sql"
-            ? "bg-zinc-100 text-zinc-900 shadow-sm"
-            : "bg-zinc-900 text-zinc-400 hover:text-zinc-200"
+          className={`flex-1 px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] ${mode === "sql"
+            ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverse)] shadow-sm"
+            : "bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
             }`}
         >
           SQL Schema
@@ -39,9 +39,9 @@ export function ModeSelector({
           role="tab"
           aria-selected={mode === "repo"}
           onClick={() => onChange("repo")}
-          className={`flex-1 py-2 px-4 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-zinc-300 ${mode === "repo"
-            ? "bg-zinc-100 text-zinc-900 shadow-sm"
-            : "bg-zinc-900 text-zinc-400 hover:text-zinc-200"
+          className={`flex-1 px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] ${mode === "repo"
+            ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverse)] shadow-sm"
+            : "bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
             }`}
         >
           Interface Repository
@@ -50,7 +50,7 @@ export function ModeSelector({
 
       {mode === "repo" && (
         <div className="flex flex-col gap-1">
-          <label htmlFor="pkg-input" className="text-xs text-zinc-400">
+          <label htmlFor="pkg-input" className="text-xs text-[var(--color-text-secondary)]">
             Package name
           </label>
           <input
@@ -60,10 +60,10 @@ export function ModeSelector({
             onChange={(e) => onPackageChange(e.target.value)}
             placeholder="models"
             aria-describedby={packageError ? "pkg-error" : undefined}
-            className="bg-zinc-900 border border-zinc-700/50 rounded-md px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+            className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
           />
           {packageError && (
-            <p id="pkg-error" className="text-xs text-red-400">
+            <p id="pkg-error" className="text-xs text-[var(--color-danger)]">
               {packageError}
             </p>
           )}
