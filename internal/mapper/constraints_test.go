@@ -3,6 +3,8 @@ package mapper
 import (
 	"strings"
 	"testing"
+
+	"github.com/n0xum/structify/internal/util"
 )
 
 func TestMapperParseConstraints(t *testing.T) {
@@ -38,9 +40,9 @@ func TestMapperParseConstraints(t *testing.T) {
 			wantIn: "CHECK (column_name IN ('a','b','c'))",
 		},
 		{
-			name:   "multiple constraints",
-			tags:   []string{"check:x > 0", "default:0"},
-			wantN:  2,
+			name:  "multiple constraints",
+			tags:  []string{"check:x > 0", "default:0"},
+			wantN: 2,
 		},
 	}
 
@@ -72,13 +74,13 @@ func TestMapperToSnakeCase(t *testing.T) {
 	}{
 		{"User", "user"},
 		{"UserProfile", "user_profile"},
-		{"ID", "i_d"},
+		{"ID", "id"},
 		{"", ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			got := toSnakeCase(tt.input)
+			got := util.ToSnakeCase(tt.input)
 			if got != tt.want {
 				t.Errorf("toSnakeCase(%q) = %q, want %q", tt.input, got, tt.want)
 			}

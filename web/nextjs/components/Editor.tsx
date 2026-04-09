@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useTheme } from "@/components/ThemeProvider";
 
 type EditorProps = {
   value: string;
@@ -12,14 +13,19 @@ type EditorProps = {
   id: string;
 };
 
+type DynamicEditorProps = Omit<EditorProps, "label" | "id"> & {
+  mode: "light" | "dark";
+};
+
 const DynamicEditor = dynamic(
   async () => {
-    const [{ default: CodeMirror }, { go }, { sql }, { vscodeDark }] =
+    const [{ default: CodeMirror }, { go }, { sql }, { intellijTheme }, { githubLight }] =
       await Promise.all([
         import("@uiw/react-codemirror"),
         import("@codemirror/lang-go"),
         import("@codemirror/lang-sql"),
-        import("@uiw/codemirror-theme-vscode"),
+        import("@/lib/intellij-theme"),
+        import("@uiw/codemirror-theme-github"),
       ]);
 
     return function EditorInner({
@@ -28,14 +34,15 @@ const DynamicEditor = dynamic(
       language,
       readOnly,
       placeholder,
-    }: Omit<EditorProps, "label" | "id">) {
+      mode,
+    }: DynamicEditorProps) {
       const extensions = [language === "go" ? go() : sql()];
       return (
         <CodeMirror
           value={value}
           onChange={onChange}
           extensions={extensions}
-          theme={vscodeDark}
+          theme={mode === "dark" ? intellijTheme : githubLight}
           readOnly={readOnly}
           placeholder={placeholder}
           basicSetup={{
@@ -53,11 +60,13 @@ const DynamicEditor = dynamic(
 );
 
 export function Editor({ value, onChange, language, readOnly, placeholder, label, id }: Readonly<EditorProps>) {
+  const { mode } = useTheme();
+
   return (
-    <section className="flex flex-col h-full" aria-label={label}>
+    <section className="flex h-full flex-col" aria-label={label}>
       <div
         id={id}
-        className="flex-1 overflow-auto rounded-lg border border-zinc-700 text-sm font-mono"
+        className="flex-1 overflow-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-sm font-mono"
       >
         <DynamicEditor
           value={value}
@@ -65,6 +74,7 @@ export function Editor({ value, onChange, language, readOnly, placeholder, label
           language={language}
           readOnly={readOnly}
           placeholder={placeholder}
+          mode={mode}
         />
       </div>
     </section>

@@ -3,8 +3,8 @@ package validator
 import "github.com/n0xum/structify/internal/domain/entity"
 
 type ValidatedEntity struct {
-	Entity         *entity.Entity
-	IsValidated   bool
+	Entity      *entity.Entity
+	IsValidated bool
 }
 
 func NewValidatedEntity(ent *entity.Entity) (*ValidatedEntity, error) {
@@ -12,7 +12,7 @@ func NewValidatedEntity(ent *entity.Entity) (*ValidatedEntity, error) {
 		return nil, err
 	}
 	return &ValidatedEntity{
-		Entity:       ent,
+		Entity:      ent,
 		IsValidated: true,
 	}, nil
 }

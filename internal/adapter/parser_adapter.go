@@ -1,16 +1,24 @@
 package adapter
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/n0xum/structify/internal/domain/entity"
 	"github.com/n0xum/structify/internal/parser"
+	"github.com/n0xum/structify/internal/util"
 )
 
-type ParserAdapter struct{}
+type ParserAdapter struct {
+	patternMatcher *parser.PatternMatcher
+	fieldMapper    *parser.FieldMapper
+}
 
 func NewParserAdapter() *ParserAdapter {
-	return &ParserAdapter{}
+	return &ParserAdapter{
+		patternMatcher: parser.NewPatternMatcher(),
+		fieldMapper:    parser.NewFieldMapper(),
+	}
 }
 
 func (a *ParserAdapter) ToDomain(pStruct *parser.Struct) *entity.Entity {
@@ -121,7 +129,7 @@ func (a *ParserAdapter) parseEnumValues(enumStr string) []string {
 
 // autoGenerateIndexName generates an index name based on field name
 func (a *ParserAdapter) autoGenerateIndexName(fieldName string) string {
-	return entity.ToSnakeCase(fieldName) + "_idx"
+	return util.ToSnakeCase(fieldName) + "_idx"
 }
 
 // parseForeignKey parses a foreign key tag
@@ -228,114 +236,147 @@ func (a *ParserAdapter) parseFKParts(fkStr string) []string {
 	return parts
 }
 
+// tagParserState holds the parsing state for the tag parser.
+type tagParserState struct {
+	parts       []string
+	current     strings.Builder
+	inBraces    int
+	inQuotes    bool
+	inTagValue  bool
+}
+
 func (a *ParserAdapter) parseTags(tag string) []string {
-	if tag == "" {
-		return nil
-	}
 	tag = strings.TrimSpace(tag)
 	if tag == "" {
 		return nil
 	}
 
-	// Smart split that handles commas inside {...}, quotes, and tag values with spaces
-	var parts []string
-	var current strings.Builder
-	inBraces := 0
-	inQuotes := false
-	inTagValue := false  // Inside a tag value (check:, default:, enum:, etc.)
+	state := &tagParserState{
+		parts: make([]string, 0),
+	}
 
 	for i := 0; i < len(tag); i++ {
 		c := tag[i]
+		a.handleTagChar(state, c, tag, i)
+	}
 
-		switch c {
-		case '{':
-			inBraces++
-			current.WriteByte(c)
-		case '}':
-			inBraces--
-			current.WriteByte(c)
-		case '"', '\'':
-			inQuotes = !inQuotes
-			current.WriteByte(c)
-		case ',':
-			// Keep comma if inside braces or quotes
-			if inBraces > 0 || inQuotes {
-				current.WriteByte(c)
-			} else if inTagValue {
-				// Check if we're inside an fk: tag (which contains commas)
-				currentStr := current.String()
-				if strings.HasPrefix(currentStr, "fk:") {
-					// Keep comma - we're inside an fk: tag
-					current.WriteByte(c)
-				} else if strings.HasPrefix(currentStr, "enum:") {
-					// Keep comma - we're inside an enum: tag
-					current.WriteByte(c)
-				} else {
-					// Check if the remaining string starts with a known tag prefix
-					remaining := strings.TrimSpace(tag[i+1:])
-					if a.startsWithKnownPrefix(remaining) {
-						// Split here - comma separates two tags (e.g., check:..., default:...)
-						if current.Len() > 0 {
-							trimmed := strings.TrimSpace(current.String())
-							if trimmed != "" {
-								parts = append(parts, trimmed)
-							}
-							current.Reset()
-							inTagValue = false
-						}
-					} else {
-						// Keep comma as part of tag value
-						current.WriteByte(c)
-					}
-				}
-			} else {
-				// Comma is a separator between tags
-				if current.Len() > 0 {
-					trimmed := strings.TrimSpace(current.String())
-					if trimmed != "" {
-						parts = append(parts, trimmed)
-					}
-					current.Reset()
-				}
-			}
-		case ' ':
-			// Keep space if inside tag value or quotes
-			if inTagValue || inQuotes {
-				current.WriteByte(c)
-			}
-			// Otherwise space is a separator between tags
-		default:
-			current.WriteByte(c)
-		}
+	a.addFinalPart(state)
+	return state.parts
+}
 
-		// Track if we're inside a tag value (check:, default:, enum:, fk:, etc.)
-		currentStr := current.String()
-		// Check if we just finished typing a known tag prefix
-		for _, prefix := range []string{"check:", "default:", "enum:", "fk:"} {
-			if strings.HasSuffix(currentStr, prefix) {
-				inTagValue = true
-				break
-			}
-		}
-		// Exit tag value mode when we hit a comma (already handled above) or
-		// when the current word is a known simple tag
-		if inTagValue && len(currentStr) > 0 {
-			trimmed := strings.TrimSpace(currentStr)
-			if a.isSimpleTag(trimmed) {
-				inTagValue = false
-			}
+// handleTagChar processes a single character during tag parsing.
+func (a *ParserAdapter) handleTagChar(state *tagParserState, c byte, tag string, index int) {
+	switch c {
+	case '{', '}':
+		a.handleBrace(state, c)
+	case '"', '\'':
+		a.handleQuote(state, c)
+	case ',':
+		a.handleComma(state, c, tag, index)
+	case ' ':
+		a.handleSpace(state)
+	default:
+		state.current.WriteByte(c)
+	}
+
+	a.updateTagValueState(state)
+}
+
+// handleBrace processes brace characters for nested structures.
+func (a *ParserAdapter) handleBrace(state *tagParserState, c byte) {
+	if c == '{' {
+		state.inBraces++
+	} else {
+		state.inBraces--
+	}
+	state.current.WriteByte(c)
+}
+
+// handleQuote processes quote characters.
+func (a *ParserAdapter) handleQuote(state *tagParserState, c byte) {
+	state.inQuotes = !state.inQuotes
+	state.current.WriteByte(c)
+}
+
+// handleComma processes comma characters, which may separate tags or be part of values.
+func (a *ParserAdapter) handleComma(state *tagParserState, c byte, tag string, index int) {
+	// Keep comma if inside braces or quotes
+	if state.inBraces > 0 || state.inQuotes {
+		state.current.WriteByte(c)
+		return
+	}
+
+	// If not in a tag value, comma is a separator
+	if !state.inTagValue {
+		a.addCurrentPart(state)
+		return
+	}
+
+	// We're in a tag value - check if this comma should split tags
+	currentStr := state.current.String()
+	if a.shouldSplitTagAtComma(currentStr, tag, index) {
+		a.addCurrentPart(state)
+		state.inTagValue = false
+	} else {
+		state.current.WriteByte(c)
+	}
+}
+
+// handleSpace processes space characters.
+func (a *ParserAdapter) handleSpace(state *tagParserState) {
+	// Space is a separator between tags - ignore it unless in quotes or tag value
+	if state.inTagValue || state.inQuotes {
+		state.current.WriteByte(' ')
+	}
+}
+
+// shouldSplitTagAtComma determines if a comma should split the current tag.
+func (a *ParserAdapter) shouldSplitTagAtComma(currentStr, fullTag string, index int) bool {
+	// fk: and enum: tags contain commas as part of their values
+	if strings.HasPrefix(currentStr, "fk:") || strings.HasPrefix(currentStr, "enum:") {
+		return false
+	}
+
+	// Check if the remaining string starts with a known tag prefix
+	remaining := strings.TrimSpace(fullTag[index+1:])
+	return a.startsWithKnownPrefix(remaining)
+}
+
+// updateTagValueState updates whether we're inside a tag value based on current content.
+func (a *ParserAdapter) updateTagValueState(state *tagParserState) {
+	currentStr := state.current.String()
+
+	// Enter tag value mode when we see a value tag prefix
+	for _, prefix := range []string{"check:", "default:", "enum:", "fk:"} {
+		if strings.HasSuffix(currentStr, prefix) {
+			state.inTagValue = true
+			return
 		}
 	}
 
-	// Add the last part
-	if current.Len() > 0 {
-		trimmed := strings.TrimSpace(current.String())
+	// Exit tag value mode when we complete a simple tag
+	if state.inTagValue && len(currentStr) > 0 {
+		trimmed := strings.TrimSpace(currentStr)
+		if a.isSimpleTag(trimmed) {
+			state.inTagValue = false
+		}
+	}
+}
+
+// addCurrentPart adds the current buffer content as a part and resets the buffer.
+func (a *ParserAdapter) addCurrentPart(state *tagParserState) {
+	if state.current.Len() > 0 {
+		trimmed := strings.TrimSpace(state.current.String())
 		if trimmed != "" {
-			parts = append(parts, trimmed)
+			state.parts = append(state.parts, trimmed)
 		}
+		state.current.Reset()
 	}
+}
 
-	return parts
+// addFinalPart adds any remaining content as the final part.
+func (a *ParserAdapter) addFinalPart(state *tagParserState) {
+	a.addCurrentPart(state)
 }
 
 // isSimpleTag checks if the string is a simple tag (no value part)
@@ -349,21 +390,24 @@ func (a *ParserAdapter) isSimpleTag(s string) bool {
 	return false
 }
 
-// startsWithKnownPrefix checks if the string starts with a known tag prefix
+// startsWithKnownPrefix checks if the string starts with a known tag prefix.
+// Uses O(1) lookup for exact matches and falls back to prefix matching for value tags.
 func (a *ParserAdapter) startsWithKnownPrefix(s string) bool {
-	knownPrefixes := []string{"pk", "unique", "check:", "default:", "enum:", "index", "unique_index", "fk:"}
-	for _, prefix := range knownPrefixes {
-		if strings.HasPrefix(s, prefix) {
-			return true
-		}
+	// Simple tags (exact match)
+	simpleTags := map[string]bool{
+		"pk":           true,
+		"unique":       true,
+		"-":            true,
+		"index":        true,
+		"unique_index": true,
 	}
-	return false
-}
+	if simpleTags[s] {
+		return true
+	}
 
-// isKnownTagPrefix checks if the string starts with a known tag prefix
-func (a *ParserAdapter) isKnownTagPrefix(s string) bool {
-	knownPrefixes := []string{"pk", "unique", "check:", "default:", "index", "fk:"}
-	for _, prefix := range knownPrefixes {
+	// Value tags (prefix match)
+	valuePrefixes := []string{"check:", "default:", "enum:", "fk:"}
+	for _, prefix := range valuePrefixes {
 		if strings.HasPrefix(s, prefix) {
 			return true
 		}
@@ -404,14 +448,222 @@ func (a *ParserAdapter) ToMap(structs map[string][]*parser.Struct) map[string][]
 	return result
 }
 
-// ToSnakeCase converts a PascalCase or camelCase string to snake_case
-func ToSnakeCase(s string) string {
-	var result []rune
-	for i, r := range s {
-		if i > 0 && r >= 'A' && r <= 'Z' {
-			result = append(result, '_')
-		}
-		result = append(result, r)
+// ToRepositoryInterface converts a parsed interface + entity into a domain RepositoryInterface.
+func (a *ParserAdapter) ToRepositoryInterface(iface *parser.Interface, ent *entity.Entity) *entity.RepositoryInterface {
+	if iface == nil || ent == nil {
+		return nil
 	}
-	return strings.ToLower(string(result))
+
+	repo := &entity.RepositoryInterface{
+		Name:       iface.Name,
+		EntityName: ent.Name,
+		Package:    iface.PackageName,
+	}
+
+	for _, m := range iface.Methods {
+		rm := entity.RepositoryMethod{
+			Name:       m.Name,
+			EntityName: ent.Name,
+		}
+
+		// Convert params
+		for _, p := range m.Params {
+			rm.Params = append(rm.Params, entity.MethodParam{
+				Name: p.Name,
+				Type: p.Type,
+			})
+		}
+
+		// Determine return characteristics
+		for _, ret := range m.Returns {
+			if ret.BaseType == "error" || ret.Type == "error" {
+				rm.ReturnsError = true
+			} else if ret.BaseType == ent.Name {
+				rm.HasEntityReturn = true
+				rm.ReturnsSingle = !ret.IsSlice
+			} else {
+				// Scalar return (float64, int64, bool, string, etc.)
+				rm.ScalarReturnType = ret.Type
+			}
+		}
+
+		// Classify method
+		rm.Kind = a.classifyMethod(m, ent)
+
+		// Handle CustomSQL (explicit SQL comment)
+		if m.SQLComment != "" {
+			rm.Kind = entity.MethodCustomSQL
+			rm.CustomSQL = m.SQLComment
+		}
+
+		// Handle FindBy field extraction
+		if rm.Kind == entity.MethodFindBy {
+			rm.FindByFields = a.extractFindByFields(m.Name)
+		}
+
+		// Handle SmartQuery SQL generation
+		if rm.Kind == entity.MethodSmartQuery {
+			a.processSmartQueryMethod(&rm, m, ent)
+		}
+
+		repo.Methods = append(repo.Methods, rm)
+	}
+
+	return repo
+}
+
+// classifyMethod determines the MethodKind from the method name.
+func (a *ParserAdapter) classifyMethod(m parser.Method, ent *entity.Entity) entity.MethodKind {
+	name := m.Name
+
+	// 1. Check for explicit SQL comment (highest priority)
+	if m.SQLComment != "" {
+		return entity.MethodCustomSQL
+	}
+
+	// 2. Check for standard CRUD methods
+	switch {
+	case name == "Create":
+		return entity.MethodCreate
+	case name == "GetByID" || name == "Get":
+		return entity.MethodGetByID
+	case name == "Update":
+		return entity.MethodUpdate
+	case name == "Delete":
+		return entity.MethodDelete
+	case name == "List" || name == "ListAll":
+		return entity.MethodList
+	}
+
+	// 3. Try existing FindBy pattern (for backward compatibility)
+	if strings.HasPrefix(name, "FindBy") {
+		return entity.MethodFindBy
+	}
+
+	// 4. Try smart pattern matching
+	if a.patternMatcher.Match(name) != nil {
+		return entity.MethodSmartQuery
+	}
+
+	// 5. Default to CustomSQL (requires SQL comment)
+	return entity.MethodCustomSQL
+}
+
+// extractFindByFields parses field names from method names like "FindByEmail" or "FindByStatusAndRole".
+func (a *ParserAdapter) extractFindByFields(methodName string) []string {
+	suffix := strings.TrimPrefix(methodName, "FindBy")
+	if suffix == "" {
+		return nil
+	}
+
+	parts := strings.Split(suffix, "And")
+	fields := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			fields = append(fields, trimmed)
+		}
+	}
+	return fields
+}
+
+// processSmartQueryMethod generates SQL for smart query methods
+func (a *ParserAdapter) processSmartQueryMethod(rm *entity.RepositoryMethod, m parser.Method, ent *entity.Entity) {
+	// Match the pattern
+	matched := a.patternMatcher.Match(m.Name)
+	if matched == nil {
+		// Pattern not found, leave as-is (will fall back to CustomSQL)
+		return
+	}
+
+	// Generate SQL — use quoted table name so reserved words (e.g. "order") are safe.
+	tableName := ent.GetQuotedTableName()
+	sql, err := a.generateSmartQuerySQL(m.Name, tableName, ent, matched)
+	if err != nil {
+		return
+	}
+
+	rm.GeneratedSQL = sql
+	rm.QueryPattern = matched.Pattern.Regex
+}
+
+// generateSmartQuerySQL generates SQL query for a smart query method
+func (a *ParserAdapter) generateSmartQuerySQL(methodName, tableName string, ent *entity.Entity, matched *parser.MatchedPattern) (string, error) {
+	var sb strings.Builder
+
+	// Determine SELECT clause based on return type
+	switch matched.ReturnType {
+	case parser.ReturnCount:
+		sb.WriteString("SELECT COUNT(*) FROM ")
+	case parser.ReturnExists:
+		sb.WriteString("SELECT EXISTS(SELECT 1 FROM ")
+	case parser.ReturnDelete:
+		sb.WriteString("DELETE FROM ")
+	default:
+		// ReturnSingle, ReturnMany - build column list
+		fields := ent.GetGenerateableFields()
+		var columns []string
+		for _, f := range fields {
+			columns = append(columns, util.ToSnakeCase(f.Name))
+		}
+		sb.WriteString("SELECT " + strings.Join(columns, ", ") + " FROM ")
+	}
+
+	sb.WriteString(tableName)
+
+	// Add WHERE clause if conditions exist
+	if len(matched.Conditions) > 0 {
+		sb.WriteString(" WHERE ")
+		var whereParts []string
+		for _, cond := range matched.Conditions {
+			part := cond.ColumnName + " " + cond.Operator + " $" + fmt.Sprint(cond.ParamIndex)
+			if cond.LogicalOp != "" {
+				part += " " + cond.LogicalOp
+			}
+			whereParts = append(whereParts, part)
+		}
+		sb.WriteString(strings.Join(whereParts, " "))
+	}
+
+	// Add ORDER BY clause
+	if matched.OrderBy != "" {
+		sb.WriteString(" ORDER BY " + matched.OrderBy)
+	}
+
+	// Add LIMIT clause
+	if matched.Limit > 0 {
+		sb.WriteString(" LIMIT ")
+		if matched.Limit == 1 {
+			sb.WriteString("1")
+		} else {
+			sb.WriteString(fmt.Sprint(matched.Limit))
+		}
+	}
+
+	// Close EXISTS subquery if needed
+	if matched.ReturnType == parser.ReturnExists {
+		sb.WriteString(")")
+	}
+
+	return sb.String(), nil
+}
+
+// ToInterfaceMap converts parsed interfaces to domain format.
+func (a *ParserAdapter) ToInterfaceMap(interfaces map[string][]*parser.Interface) map[string][]*entity.RepositoryInterface {
+	if interfaces == nil {
+		return nil
+	}
+
+	result := make(map[string][]*entity.RepositoryInterface)
+	for pkgName, ifaces := range interfaces {
+		for _, iface := range ifaces {
+			// Create a placeholder without entity binding
+			repo := &entity.RepositoryInterface{
+				Name:    iface.Name,
+				Package: pkgName,
+			}
+			result[pkgName] = append(result[pkgName], repo)
+		}
+	}
+	return result
 }

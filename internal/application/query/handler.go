@@ -53,8 +53,8 @@ func (h *Handler) Parse(ctx context.Context, q *ParseQuery) (*ParseResult, error
 }
 
 type FindEntityQuery struct {
-	Name      string
-	Entities  map[string][]*entity.Entity
+	Name     string
+	Entities map[string][]*entity.Entity
 }
 
 func (h *Handler) FindEntity(ctx context.Context, q *FindEntityQuery) (*entity.Entity, bool) {

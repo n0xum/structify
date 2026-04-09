@@ -8,11 +8,18 @@ func TestToSnakeCase(t *testing.T) {
 		want  string
 	}{
 		{"User", "user"},
-		{"UserProfile", "user_profile"},
+		{"UserName", "user_name"},
 		{"UserID", "user_id"},
-		{"APIKey", "apikey"},
 		{"ID", "id"},
+		{"APIKey", "api_key"},
+		{"XMLParser", "xml_parser"},
+		{"HTTPServer", "http_server"},
+		{"AvatarURL", "avatar_url"},
+		{"CustomerID", "customer_id"},
+		{"SKU", "sku"},
+		{"TotalAmount", "total_amount"},
 		{"simpleword", "simpleword"},
+		{"UserProfile", "user_profile"},
 		{"", ""},
 	}
 

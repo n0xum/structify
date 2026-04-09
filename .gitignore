@@ -6,7 +6,7 @@
 *.dylib
 structify
 structify-server
-server
+/server
 
 # Test binary, built with `go test -c`
 *.test
@@ -33,3 +33,12 @@ go.work.sum
 
 # Claude
 .claude/
+
+# Backup files
+*.bak
+*.bak*
+*.tmp
+*~
+
+# Conductor AI project-management tool
+conductor/

@@ -38,6 +38,24 @@ func TestMapperMapType(t *testing.T) {
 			wantNotNull: true,
 		},
 		{
+			name:        "time.Time maps to TIMESTAMP",
+			goType:      "time.Time",
+			wantType:    "TIMESTAMP",
+			wantNotNull: true,
+		},
+		{
+			name:        "json.RawMessage maps to JSONB",
+			goType:      "json.RawMessage",
+			wantType:    "JSONB",
+			wantNotNull: false,
+		},
+		{
+			name:        "pointer to time.Time",
+			goType:      "*time.Time",
+			wantType:    "TIMESTAMP",
+			wantNotNull: true,
+		},
+		{
 			name:        "unknown type",
 			goType:      "CustomType",
 			wantType:    "TEXT",
@@ -62,11 +80,11 @@ func TestMapperFormatColumnDefinition(t *testing.T) {
 	mapper := NewMapper()
 
 	tests := []struct {
-		name     string
-		field    string
-		mapping  TypeMapping
-		tags     []string
-		want     string
+		name    string
+		field   string
+		mapping TypeMapping
+		tags    []string
+		want    string
 	}{
 		{
 			name:    "primary key",
@@ -171,9 +189,14 @@ func TestMapperGetBaseType(t *testing.T) {
 			wantType: "map",
 		},
 		{
-			name:     "qualified type",
+			name:     "qualified type with mapping returns full name",
 			input:    "time.Time",
-			wantType: "Time",
+			wantType: "time.Time",
+		},
+		{
+			name:     "qualified type without mapping strips package",
+			input:    "some.CustomType",
+			wantType: "CustomType",
 		},
 	}
 

@@ -1,4 +1,5 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const STRUCTIFY_VERSION = "0.1.0";
 
 async function post(path: string, body: object): Promise<string> {
   let res: Response;
@@ -31,16 +32,10 @@ export async function generateSQL(source: string): Promise<string> {
   return post("/api/generate/sql", { source });
 }
 
-export async function generateCode(source: string, pkg: string): Promise<string> {
-  return post("/api/generate/code", { source, package: pkg });
+export async function generateRepository(source: string, pkg: string): Promise<string> {
+  return post("/api/generate/repo", { source, package: pkg });
 }
 
 export async function fetchVersion(): Promise<string> {
-  try {
-    const res = await fetch(`${BASE_URL}/api/version`);
-    const data = await res.json();
-    return data?.version ?? "unknown";
-  } catch {
-    return "unknown";
-  }
+  return STRUCTIFY_VERSION;
 }

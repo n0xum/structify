@@ -1,14 +1,18 @@
 "use client";
 
-import { EXAMPLES } from "@/lib/examples";
+import { EXAMPLES, REPO_EXAMPLES } from "@/lib/examples";
+import type { Mode } from "./ModeSelector";
 
 type ExampleLoaderProps = {
+  mode: Mode;
   onSelect: (source: string) => void;
 };
 
-export function ExampleLoader({ onSelect }: Readonly<ExampleLoaderProps>) {
+export function ExampleLoader({ mode, onSelect }: Readonly<ExampleLoaderProps>) {
+  const examples = mode === "repo" ? REPO_EXAMPLES : EXAMPLES;
+
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const example = EXAMPLES.find((ex) => ex.label === e.target.value);
+    const example = examples.find((ex) => ex.label === e.target.value);
     if (example) onSelect(example.source);
     e.target.value = "";
   }
@@ -17,13 +21,13 @@ export function ExampleLoader({ onSelect }: Readonly<ExampleLoaderProps>) {
     <select
       defaultValue=""
       onChange={handleChange}
-      aria-label="Load example struct"
-      className="bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1.5 text-sm text-zinc-300 focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
+      aria-label={mode === "repo" ? "Load example interface" : "Load example struct"}
+      className="cursor-pointer rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
     >
       <option value="" disabled>
         Load example…
       </option>
-      {EXAMPLES.map((ex) => (
+      {examples.map((ex) => (
         <option key={ex.label} value={ex.label}>
           {ex.label} — {ex.description}
         </option>
