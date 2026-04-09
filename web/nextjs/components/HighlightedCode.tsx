@@ -58,7 +58,7 @@ const prismTheme = {
 
 type HighlightedCodeProps = {
   code: string;
-  language: "go" | "sql";
+  language: "go" | "sql" | "bash";
 };
 
 export function HighlightedCode({ code, language }: Readonly<HighlightedCodeProps>) {
