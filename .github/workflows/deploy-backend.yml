@@ -1,108 +1,149 @@
+# Deploy des Go-Backends auf den VPS (arm64, Debian 12).
+#
+# Image-Modell: gebaut wird in der CI auf einem nativen arm64-Runner
+# (ubuntu-24.04-arm), das fertige Image landet in GHCR, der VPS zieht es nur.
+# Kein Quellcode und keine Build-Last mehr auf dem Server.
+#
+# Steht kein arm64-Hosted-Runner im Plan bereit, ist der Fallback
+# `runs-on: ubuntu-latest` plus `docker/setup-qemu-action` (arm64 emuliert).
 name: Deploy Backend
 
 on:
   push:
     branches: [main]
     paths:
-      - "cmd/server/**"
+      - "cmd/**"
       - "internal/**"
+      - "pkg/**"
       - "go.mod"
       - "go.sum"
       - "Dockerfile"
       - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write # Image nach GHCR pushen (eingebauter GITHUB_TOKEN)
+
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/n0xum/structify-backend
+  SERVICE: structify-backend
+  COMPOSE_DIR: /srv/web/structify
+  SSH_OPTS: -o ServerAliveInterval=20 -o ServerAliveCountMax=15 -o TCPKeepAlive=yes
+
 jobs:
-  deploy:
-    name: Build & Deploy to Server
+  # ── Tests als Gate vor dem Build ──────────────────────────────────────────
+  test:
+    name: test
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: "1.26.0"
           cache: true
+      - run: go test ./...
 
-      - name: Run tests
-        run: go test -v ./...
+  # ── Bauen und ins Registry pushen (nativ arm64) ───────────────────────────
+  build-and-push:
+    name: build & push
+    needs: test
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Setup SSH
+      - name: An GHCR anmelden
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image-Tags bestimmen
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+
+      - name: Bauen und pushen (linux/arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── Auf dem VPS nur ziehen und tauschen ───────────────────────────────────
+  deploy:
+    name: deploy
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH-Zugang einrichten
         env:
           SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
           SSH_HOST: ${{ secrets.SERVER_HOST }}
         run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_KEY" > ~/.ssh/id_ed25519
-          chmod u=r,go= ~/.ssh/id_ed25519
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
 
-      - name: Deploy source code to server
+      - name: Image ziehen und Container tauschen
         env:
           SSH_USER: ${{ secrets.SERVER_USER }}
           SSH_HOST: ${{ secrets.SERVER_HOST }}
         run: |
-          ssh -i ~/.ssh/id_ed25519 "$SSH_USER@$SSH_HOST" \
-            "rm -rf /opt/structify-build/*"
-
-          rsync -avz --delete \
-            -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no" \
-            --exclude='.git' \
-            --exclude='.github' \
-            --exclude='*.md' \
-            --exclude='tmp' \
-            ./ "$SSH_USER@$SSH_HOST":/opt/structify-build/
-
-      - name: Build and deploy Docker container
-        env:
-          SSH_USER: ${{ secrets.SERVER_USER }}
-          SSH_HOST: ${{ secrets.SERVER_HOST }}
-        run: |
-          ssh -i ~/.ssh/id_ed25519 "$SSH_USER@$SSH_HOST" << 'ENDSSH'
-            set -e
-
-            cd /home/n0xum/docker/compose/apps
-
-            sudo docker compose stop structify-backend || true
-            sudo docker compose build --no-cache structify-backend
-            sudo docker compose up -d structify-backend
-
-            sleep 5
-
-            sudo docker compose ps structify-backend
-            sudo docker compose logs --tail=50 structify-backend
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key $SSH_OPTS "$SSH_USER@$SSH_HOST" \
+            "COMPOSE_DIR='$COMPOSE_DIR' SERVICE='$SERVICE' bash -euo pipefail -s" <<'ENDSSH'
+            cd "$COMPOSE_DIR"
+            docker compose pull "$SERVICE"
+            docker compose up -d "$SERVICE"
           ENDSSH
 
-      - name: Health check
+      - name: Healthcheck
         env:
           SSH_USER: ${{ secrets.SERVER_USER }}
           SSH_HOST: ${{ secrets.SERVER_HOST }}
         run: |
-          ssh -i ~/.ssh/id_ed25519 "$SSH_USER@$SSH_HOST" << 'ENDSSH'
-            cd /home/n0xum/docker/compose/apps
-            for i in $(seq 1 12); do
-              if sudo docker compose ps structify-backend --format json | grep -q '"healthy"'; then
-                echo "Health check passed"
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key $SSH_OPTS "$SSH_USER@$SSH_HOST" \
+            "COMPOSE_DIR='$COMPOSE_DIR' SERVICE='$SERVICE' bash -euo pipefail -s" <<'ENDSSH'
+            cd "$COMPOSE_DIR"
+            for attempt in $(seq 1 24); do
+              if docker compose ps "$SERVICE" --format json | grep -q '"healthy"'; then
+                echo "Container ist gesund (nach $((attempt * 5))s)"
                 exit 0
               fi
-              echo "Waiting for healthy status... ($i/12)"
+              echo "warte auf gesunden Zustand … ($attempt/24)"
               sleep 5
             done
-            echo "Health check failed"
-            sudo docker compose logs --tail=100 structify-backend
+            echo "FEHLER: Container wird nicht gesund." >&2
+            docker compose logs --tail=100 "$SERVICE" >&2
             exit 1
           ENDSSH
 
-      - name: Cleanup
-        if: always()
-        run: rm -f ~/.ssh/id_ed25519
-
-      - name: Deployment notification
+      - name: Verwaiste Images entfernen
         if: success()
+        env:
+          SSH_USER: ${{ secrets.SERVER_USER }}
+          SSH_HOST: ${{ secrets.SERVER_HOST }}
         run: |
-          echo "Backend deployed successfully"
-          echo "Version: $(git describe --tags --always)"
-          echo "Commit: ${{ github.sha }}"
+          ssh -i ~/.ssh/deploy_key $SSH_OPTS "$SSH_USER@$SSH_HOST" "docker image prune -f"
+
+      - name: Schlüssel entfernen
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
