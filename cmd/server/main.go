@@ -26,7 +26,7 @@ func getAllowedOrigins() []string {
 		return strings.Split(env, ",")
 	}
 	return []string{
-		"https://structify.alexander-kruska.dev",
+		"https://structify.alexanderkruska.dev",
 		"http://localhost:3000",
 	}
 }
