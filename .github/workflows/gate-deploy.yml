@@ -1,0 +1,59 @@
+# Reusable: ask the server-side deploy gate to pull and swap the stack (`ssh deploy@host true`).
+# The compose file stays on the server; nothing is uploaded and no free-form command runs. The key, the host and the pinned
+# host key are scoped to the environment `production`: SSH_PRIVATE_KEY (secret), SSH_HOST, SSH_PORT, SSH_KNOWN_HOSTS (variables).
+name: Deploy through the gate
+
+on:
+  workflow_call:
+    inputs:
+      url:
+        description: Public URL shown on the deployment
+        required: true
+        type: string
+      note:
+        description: Free text for the job summary (image digests)
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy through the gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: production
+      url: ${{ inputs.url }}
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Configure constrained SSH client
+        env:
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ vars.SSH_HOST }}
+          SSH_PORT: ${{ vars.SSH_PORT }}
+          SSH_KNOWN_HOSTS: ${{ vars.SSH_KNOWN_HOSTS }}
+        run: bash scripts/ci/configure-gate-ssh.sh
+
+      - name: Run the server-side gate only
+        run: ssh -F "$RUNNER_TEMP/ssh/config" gate true | tee "$RUNNER_TEMP/gate.log"
+
+      - name: Record the gate result
+        if: always()
+        env:
+          NOTE: ${{ inputs.note }}
+        run: |
+          { echo "### gate: $GITHUB_SHA"; [ -z "$NOTE" ] || echo "- $NOTE"; echo '```'; cat "$RUNNER_TEMP/gate.log" 2>/dev/null || true; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove the key material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/ssh/id_key" "$RUNNER_TEMP/ssh/known_hosts" "$RUNNER_TEMP/ssh/config" "$RUNNER_TEMP/gate.log"
