@@ -2,7 +2,7 @@
 
 Structify reads Go structs and generates two things from them: a PostgreSQL schema and ready-to-use `database/sql` CRUD code. You annotate your struct fields with `db` tags to control how the output looks — primary keys, foreign keys, indexes, constraints, and more. No ORM, no reflection at runtime, just generated SQL and Go code you can read and own.
 
-Try it in the browser at [structify.alexander-kruska.dev](https://structify.alexander-kruska.dev).
+Try it in the browser at [structify.alexanderkruska.dev](https://structify.alexanderkruska.dev).
 
 ## What it generates
 

@@ -250,7 +250,7 @@ describe("StructifyApp", () => {
     // replace should have been called with a URL that has no ?load= param
     await waitFor(() => {
       const loadRemovalCall = mockReplace.mock.calls.find(
-        ([url]: [string]) => !url.includes("load=")
+        (args: unknown[]) => !String(args[0]).includes("load=")
       );
       expect(loadRemovalCall).toBeDefined();
     });
@@ -266,7 +266,7 @@ describe("StructifyApp", () => {
     });
 
     const call = mockReplace.mock.calls.find(
-      ([url]: [string]) => !url.includes("load=")
+      (args: unknown[]) => !String(args[0]).includes("load=")
     );
     expect(call).toBeDefined();
   });
