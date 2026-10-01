@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 
 // Mock the dynamic CodeMirror import
 vi.mock("next/dynamic", () => ({
-  default: (_loader: unknown, _opts: unknown) =>
+  default: () =>
     function MockDynamicEditor({
       value,
       placeholder,
