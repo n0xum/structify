@@ -207,7 +207,7 @@ func TestGetAllowedOrigins_Default(t *testing.T) {
 	if len(origins) != 2 {
 		t.Fatalf("expected 2 default origins, got %d", len(origins))
 	}
-	if origins[0] != "https://structify.alexander-kruska.dev" {
+	if origins[0] != "https://structify.alexanderkruska.dev" {
 		t.Fatalf("expected structify origin, got %q", origins[0])
 	}
 }
