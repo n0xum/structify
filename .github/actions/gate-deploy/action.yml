@@ -1,0 +1,56 @@
+# Composite action: ask the server-side deploy gate to pull and swap the stack (`ssh deploy@host true`).
+# The compose file stays on the server; nothing is uploaded and no free-form command runs.
+#
+# Why a composite action and not a reusable workflow: the key is an ENVIRONMENT secret (environment `production`, limited to
+# the branch main). Environment secrets are visible only to a job that declares the environment itself, and a job that calls a
+# reusable workflow cannot declare one. The steps of a composite action run inside the caller's job, so the caller declares
+# `environment: production` and passes the secret in as an input. Run it after `actions/checkout` (it uses scripts/ci).
+name: Deploy through the gate
+description: Run the server-side deploy gate through a constrained, host-key-pinned SSH client.
+
+inputs:
+  ssh-key:
+    description: Private key of the stack's deploy key (environment secret SSH_PRIVATE_KEY)
+    required: true
+  host:
+    description: Host name or address of the server (environment variable SSH_HOST)
+    required: true
+  port:
+    description: SSH port (environment variable SSH_PORT)
+    required: true
+  known-hosts:
+    description: Complete pinned known_hosts line of the server (environment variable SSH_KNOWN_HOSTS)
+    required: true
+  note:
+    description: Free text for the job summary (image digests)
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Configure constrained SSH client
+      shell: bash
+      env:
+        SSH_KEY: ${{ inputs.ssh-key }}
+        SSH_HOST: ${{ inputs.host }}
+        SSH_PORT: ${{ inputs.port }}
+        SSH_KNOWN_HOSTS: ${{ inputs.known-hosts }}
+      run: bash scripts/ci/configure-gate-ssh.sh
+
+    - name: Run the server-side gate only
+      shell: bash
+      run: ssh -F "$RUNNER_TEMP/ssh/config" gate true | tee "$RUNNER_TEMP/gate.log"
+
+    - name: Record the gate result
+      if: always()
+      shell: bash
+      env:
+        NOTE: ${{ inputs.note }}
+      run: |
+        { echo "### gate: $GITHUB_SHA"; [ -z "$NOTE" ] || echo "- $NOTE"; echo '```'; cat "$RUNNER_TEMP/gate.log" 2>/dev/null || true; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Remove the key material
+      if: always()
+      shell: bash
+      run: rm -f "$RUNNER_TEMP/ssh/id_key" "$RUNNER_TEMP/ssh/known_hosts" "$RUNNER_TEMP/ssh/config" "$RUNNER_TEMP/gate.log"

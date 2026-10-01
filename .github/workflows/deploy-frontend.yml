@@ -13,7 +13,7 @@ on:
       - "web/nextjs/**"
       - ".github/workflows/deploy-frontend.yml"
       - ".github/workflows/image.yml"
-      - ".github/workflows/gate-deploy.yml"
+      - ".github/actions/**"
       - "scripts/ci/**"
   workflow_dispatch:
 
@@ -44,9 +44,29 @@ jobs:
     name: deploy
     needs: image
     if: github.ref == 'refs/heads/main' && vars.STRUCTIFY_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # The environment is declared here, in the job that runs the steps: its secret SSH_PRIVATE_KEY and its variables are only
+    # visible to such a job (see .github/actions/gate-deploy/action.yml).
+    environment:
+      name: production
+      url: https://structify.alexanderkruska.dev
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     permissions:
       contents: read
-    uses: ./.github/workflows/gate-deploy.yml
-    with:
-      url: https://structify.alexanderkruska.dev
-      note: "frontend image index ${{ needs.image.outputs.digest }}"
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Deploy through the gate
+        uses: ./.github/actions/gate-deploy
+        with:
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          host: ${{ vars.SSH_HOST }}
+          port: ${{ vars.SSH_PORT }}
+          known-hosts: ${{ vars.SSH_KNOWN_HOSTS }}
+          note: "frontend image index ${{ needs.image.outputs.digest }}"
