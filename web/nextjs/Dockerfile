@@ -1,7 +1,7 @@
 FROM oven/bun:1.4.4-alpine AS builder
 WORKDIR /app
 COPY package.json bun.lock bunfig.toml ./
-RUN bun install --frozen-lockfile
+RUN bun install --frozen-lockfile --network-concurrency=6
 COPY . .
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
