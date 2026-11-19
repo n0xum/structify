@@ -262,8 +262,8 @@ structify/
 
 ### TC-006 — GitHub Pages Deployment
 A dedicated workflow `deploy-frontend.yml` triggers on push to `main`:
-1. `npm ci` in `web/`
-2. `npm run build` (produces `web/out/`)
+1. `bun install --frozen-lockfile` in `web/nextjs/`
+2. `bun run build` (produces `web/nextjs/out/`)
 3. `actions/upload-pages-artifact` from `web/out/`
 4. `actions/deploy-pages`
 

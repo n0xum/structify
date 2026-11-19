@@ -14,10 +14,8 @@
 - `go test ./...`: run all Go unit tests.
 - `go test -tags=integration ./test/integration/...`: run backend integration tests.
 - `go run ./cmd/server`: start the backend API locally.
-- `npm --prefix web/nextjs install`: install frontend dependencies.
-- `npm --prefix web/nextjs run dev`: run frontend in development mode.
-- `npm --prefix web/nextjs run test`: run frontend unit tests (Vitest).
-- `npm --prefix web/nextjs run lint`: run frontend ESLint checks.
+- In `web/nextjs`, run `bun install` to install frontend dependencies.
+- In `web/nextjs`, run `bun run dev`, `bun run test` (Vitest), or `bun run lint` (ESLint).
 
 ## Coding Style & Naming Conventions
 - Go: use `gofmt` formatting, idiomatic Go naming (`CamelCase` exports, `camelCase` internals), and table-driven tests where useful.

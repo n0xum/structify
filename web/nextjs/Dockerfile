@@ -1,11 +1,11 @@
-FROM node:20-alpine AS builder
+FROM oven/bun:1.4.4-alpine AS builder
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts
+COPY package.json bun.lock bunfig.toml ./
+RUN bun install --frozen-lockfile --network-concurrency=6
 COPY . .
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-RUN npm run build
+RUN bun run build
 
 FROM nginx:alpine
 RUN apk --no-cache add curl && \
