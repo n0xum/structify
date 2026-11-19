@@ -1,8 +1,6 @@
 # Frontend (Next.js static export served by nginx): build the image for amd64 and arm64, publish one manifest, then ask
 # the deploy gate on the host to swap. NEXT_PUBLIC_API_URL is baked into the static bundle at build time, so it is set here.
-# It is the LIVE domain (alexanderkruska.dev): the previous workflow used the retired alexander-kruska.dev, which no longer
-# resolves, so the deployed frontend could not reach its API. The repository variable NEXT_PUBLIC_API_URL is deliberately
-# not used (it points to an old dot domain).
+# Use the live API hostname (api-structify.alexanderkruska.dev), not the repository variable NEXT_PUBLIC_API_URL.
 # The deploy job only runs when the repository variable STRUCTIFY_DEPLOY_ENABLED is `true`.
 name: Deploy Frontend
 
